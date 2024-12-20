@@ -1,5 +1,1 @@
-*.cf
-*.o
-tb_spi_rx
-*.lst
-*.ghw
+/build
