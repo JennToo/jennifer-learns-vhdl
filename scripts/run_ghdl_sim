@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SIM=$1
+WAVE=$2
+LOGFILE=$3
+
+"$SIM" --wave="$WAVE" --assert-level=note | tee "$LOGFILE"
+if grep "end of test" "$LOGFILE"
+then
+    printf "\n\nSIMULATION PASSED! \n\nIgnore previous message about failure\n\n"
+    exit 0
+else
+    exit 1
+fi

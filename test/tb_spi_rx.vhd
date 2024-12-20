@@ -54,14 +54,12 @@ begin
         srst <= '0';
         spi_clk <= '0';
         spi_mosi <= '0';
-        wait until rising_edge(clk) for 5 ns;
-        wait for 1 ps;
+        wait until falling_edge(clk) for 5 ns;
 
         assert data_ready = '0' report "data should not be ready yet" severity error;
 
         srst <= '1';
-        wait until rising_edge(clk) for 5 ns;
-        wait for 1 ps;
+        wait until falling_edge(clk) for 5 ns;
 
         -- Clock in the first 7 bits
         for ii in 0 to 6 loop
