@@ -32,10 +32,10 @@ architecture behav of sim_sdram is
     type memory_array is array (1 to word_count) of std_logic_vector(15 downto 0);
     type powerup_state_t is (
         powerup_want_wait,
-        -- powerup_want_precharge,
-        -- powerup_want_refresh1,
-        -- powerup_want_refresh2,
-        -- powerup_want_lmr,
+        powerup_want_precharge,
+        powerup_want_refresh1,
+        powerup_want_refresh2,
+        powerup_want_lmr,
         powerup_ready
     );
     type command_t is (
@@ -87,7 +87,7 @@ architecture behav of sim_sdram is
         end if;
     end function get_command;
 begin
-    commander: process(clk, arst_model)
+    powerup: process(clk, arst_model)
         variable command : command_t;
     begin
         if (arst_model = '0') then
@@ -105,11 +105,24 @@ begin
                     assert command = command_nop report "in wait period for power up, no cmds allowed yet" severity error;
                     if (power_on_time - now >= required_power_on_wait) then
                         -- TODO: There's more states actually lol
-                        powerup_state <= powerup_ready;
+                        powerup_state <= powerup_want_precharge;
                     end if;
+                when powerup_want_precharge =>
+                    assert command = command_precharge report "expecting precharge" severity error;
+                    -- TODO: verify it's precharge-all specifically
+                    powerup_state <= powerup_want_refresh1;
+                when powerup_want_refresh1 =>
+                    assert command = command_refresh report "expecting refresh" severity error;
+                    powerup_state <= powerup_want_refresh2;
+                when powerup_want_refresh2 =>
+                    assert command = command_refresh report "expecting refresh" severity error;
+                    powerup_state <= powerup_want_lmr;
+                when powerup_want_lmr =>
+                    assert command = command_refresh report "expecting lmr" severity error;
+                    powerup_state <= powerup_ready;
                 when powerup_ready =>
                     -- Don't care
             end case;
         end if;
-    end process commander;
+    end process powerup;
 end behav;
