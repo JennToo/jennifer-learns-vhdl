@@ -21,6 +21,7 @@ build/work/$(1):
 endef
 
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx,src/spi_rx.vhd test/tb_spi_rx.vhd))
+$(eval $(call DEFINE_SIMULATION,tb_sdram,test/sim_sdram.vhd test/tb_sdram.vhd))
 
 clean:
 	rm -rf build
