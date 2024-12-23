@@ -39,8 +39,8 @@ entity sim_sdram is
         cas_l : in    std_logic;
         ras_l : in    std_logic;
         we_l  : in    std_logic;
-        dqml  : in    std_logic_vector(7 downto 0);
-        dqmh  : in    std_logic_vector(7 downto 0);
+        dqml  : in    std_logic;
+        dqmh  : in    std_logic;
         ba    : in    std_logic_vector(1 downto 0);
         a     : in    std_logic_vector(12 downto 0);
         dq    : inout std_logic_vector(15 downto 0);
@@ -53,9 +53,9 @@ end sim_sdram;
 
 architecture behav of sim_sdram is
     -- Real chip has 32 MiB, 16-bit words. But if we do that, the simulator will crash
-    constant word_count             : integer := 65536;
+    constant word_count : integer := 65536;
 
-    type memory_array is array (1 to word_count) of std_logic_vector(15 downto 0);
+    type memory_array is array (0 to word_count) of std_logic_vector(15 downto 0);
     type powerup_state_t is (
         powerup_want_wait,
         powerup_want_precharge,

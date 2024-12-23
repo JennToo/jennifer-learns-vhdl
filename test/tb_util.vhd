@@ -1,0 +1,16 @@
+library work;
+    use work.util.all;
+
+entity tb_util is
+end tb_util;
+
+architecture behave of tb_util is
+    constant cycles_10 : integer := period_to_cycles(100 ns, 10 ns);
+    constant cycles_20 : integer := period_to_cycles(191 ns, 10 ns);
+begin
+    stimulus: process begin
+        assert cycles_10 = 10 report "cycles_10 should be 10" severity error;
+        assert cycles_20 = 20 report "cycles_20 should be 20" severity error;
+        wait;
+    end process stimulus;
+end behave;
