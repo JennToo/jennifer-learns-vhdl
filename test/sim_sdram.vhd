@@ -7,6 +7,7 @@ library ieee;
 entity sim_sdram is
     generic (
         required_power_on_wait  : time := 200 us;
+        power_on_refresh_count  : integer := 8;
         -- Defaults are based on -7 variant
         -- Clock cycle time (CAS 3 or CAS 2)
         t_ck3                   : time := 7 ns;
@@ -59,8 +60,7 @@ architecture behav of sim_sdram is
     type powerup_state_t is (
         powerup_want_wait,
         powerup_want_precharge,
-        powerup_want_refresh1,
-        powerup_want_refresh2,
+        powerup_want_refresh,
         powerup_want_lmr,
         powerup_ready
     );
@@ -99,6 +99,7 @@ architecture behav of sim_sdram is
     signal powerup_state        : powerup_state_t := powerup_want_wait;
     signal state                : state_t         := state_poweron;
     signal last_transition_time : time            := 0 ns;
+    signal seen_refreshes       : integer         := 0;
 
     function get_command(
         f_cs_l  : in std_logic;
@@ -140,6 +141,7 @@ begin
         if (arst_model = '0') then
             power_on_time <= now;
             powerup_state <= powerup_want_wait;
+            seen_refreshes <= 0;
             for word in 0 to word_count loop
                 memory(word) <= "UUUUUUUUUUUUUUUU";
             end loop;
@@ -150,22 +152,29 @@ begin
             case (powerup_state) is
                 when powerup_want_wait =>
                     assert command = command_nop report "in wait period for power up, no cmds allowed yet" severity error;
-                    if (power_on_time - now >= required_power_on_wait) then
+                    if (now - power_on_time >= required_power_on_wait) then
                         powerup_state <= powerup_want_precharge;
                     end if;
                 when powerup_want_precharge =>
-                    assert command = command_precharge report "expecting precharge" severity error;
-                    -- TODO: verify it's precharge-all specifically
-                    powerup_state <= powerup_want_refresh1;
-                when powerup_want_refresh1 =>
-                    assert command = command_refresh report "expecting refresh" severity error;
-                    powerup_state <= powerup_want_refresh2;
-                when powerup_want_refresh2 =>
-                    assert command = command_refresh report "expecting refresh" severity error;
-                    powerup_state <= powerup_want_lmr;
+                    if(command /= command_nop) then
+                        assert command = command_precharge report "expecting precharge" severity error;
+                        -- TODO: verify it's precharge-all specifically
+                        powerup_state <= powerup_want_refresh;
+                    end if;
+                when powerup_want_refresh =>
+                    if(command /= command_nop) then
+                        assert command = command_refresh report "expecting refresh" severity error;
+                        if (seen_refreshes < power_on_refresh_count - 1) then
+                            seen_refreshes <= seen_refreshes + 1;
+                        else
+                            powerup_state <= powerup_want_lmr;
+                        end if;
+                    end if;
                 when powerup_want_lmr =>
-                    assert command = command_refresh report "expecting lmr" severity error;
-                    powerup_state <= powerup_ready;
+                    if(command /= command_nop) then
+                        assert command = command_load_mode_reg report "expecting lmr" severity error;
+                        powerup_state <= powerup_ready;
+                    end if;
                 when powerup_ready =>
                     -- Don't care
             end case;
@@ -187,6 +196,18 @@ begin
             case (state) is
                 when state_precharge =>
                     if (now - last_transition_time >= t_rp) then
+                        new_state := state_idle;
+                        last_transition_time <= now;
+                    end if;
+                when state_auto_refresh =>
+                    if (now - last_transition_time >= t_rc) then
+                        -- Technically in the datasheet we go into precharge,
+                        -- but t_rc is easier to use
+                        new_state := state_idle;
+                        last_transition_time <= now;
+                    end if;
+                when state_mode_reg =>
+                    if (now - last_transition_time >= t_mrd) then
                         new_state := state_idle;
                         last_transition_time <= now;
                     end if;
@@ -212,6 +233,18 @@ begin
                         when others =>
                             assert false report "invalid command while in precharge state" severity error;
                     end case;
+                when state_auto_refresh =>
+                    case (command) is
+                        when command_nop =>
+                        when others =>
+                            assert false report "invalid command while in auto-refresh state" severity error;
+                    end case;
+                when state_mode_reg =>
+                    case (command) is
+                        when command_nop =>
+                        when others =>
+                            assert false report "invalid command while in LMR state" severity error;
+                    end case;
                 when state_idle =>
                     case (command) is
                         when command_load_mode_reg =>
@@ -223,6 +256,8 @@ begin
                         when command_active =>
                             new_state := state_row_active;
                             last_transition_time <= now;
+                        when command_nop =>
+                            -- Don't care
                         when others =>
                             assert false report "invalid command while in idle state" severity error;
                     end case;
