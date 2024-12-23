@@ -2,9 +2,36 @@ library ieee;
    use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
 
--- A simulated SDRAM chip. Based on the MT48LC32M16 datasheet since that's what
+-- A simulated SDRAM chip. Based on the IS42S16160G-7TL datasheet since that's what
 -- the ULX3S uses.
 entity sim_sdram is
+    generic (
+        required_power_on_wait  : time := 200 us;
+        -- Defaults are based on -7 variant
+        -- Clock cycle time (CAS 3 or CAS 2)
+        t_ck3                   : time := 7 ns;
+        t_ck2                   : time := 10 ns;
+        -- REF to REF / ACT to ACT
+        t_rc                    : time := 67.5 ns;
+        -- ACT to PRE
+        t_ras                   : time := 45 ns;
+        -- PRE to ACT
+        t_rp                    : time := 20 ns;
+        -- Active command to read/write command delay
+        t_rcd                   : time := 20 ns;
+        -- ACT [0] to ACT [1]
+        t_rrd                   : time := 14 ns;
+        -- Input data to precharge command delay
+        t_dpl                   : time := 14 ns;
+        -- Input data to active / refresh command during auto-precharge
+        t_dal                   : time := 35 ns;
+        -- Mode register set time
+        t_mrd                   : time := 15 ns;
+        -- Refresh cycle time
+        t_ref                   : time := 64 ms;
+        refresh_count           : integer := 8192
+    );
+
     port(
         clk   : in    std_logic;
         cke   : in    std_logic;
@@ -27,7 +54,6 @@ end sim_sdram;
 architecture behav of sim_sdram is
     -- Real chip has 32 MiB, 16-bit words. But if we do that, the simulator will crash
     constant word_count             : integer := 65536;
-    constant required_power_on_wait : time    := 100 us;
 
     type memory_array is array (1 to word_count) of std_logic_vector(15 downto 0);
     type powerup_state_t is (
@@ -104,7 +130,6 @@ begin
                 when powerup_want_wait =>
                     assert command = command_nop report "in wait period for power up, no cmds allowed yet" severity error;
                     if (power_on_time - now >= required_power_on_wait) then
-                        -- TODO: There's more states actually lol
                         powerup_state <= powerup_want_precharge;
                     end if;
                 when powerup_want_precharge =>
