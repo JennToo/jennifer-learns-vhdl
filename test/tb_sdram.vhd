@@ -7,6 +7,9 @@ end tb_sdram;
 
 architecture behav of tb_sdram is
     constant CLK_PERIOD : time := 10 ns; -- 100 MHz
+    -- Most real RAM has a much larger powerup time. But that makes the
+    -- simulation waveforms harder to read.
+    constant powerup_time : time := 50 * CLK_PERIOD;
 
     signal axi_awvalid : std_logic;
     signal axi_awready : std_logic;
@@ -43,7 +46,11 @@ architecture behav of tb_sdram is
 
     signal stop : boolean := false;
 begin
-    sim_sdram_0: entity work.sim_sdram port map (
+    sim_sdram_0: entity work.sim_sdram
+    generic map(
+        required_power_on_wait => powerup_time
+    )
+    port map (
         clk        => clk,
         cke        => cke,
         cs_l       => cs_l,
@@ -60,7 +67,8 @@ begin
 
     basic_sdram_0: entity work.basic_sdram
     generic map(
-        clk_period => CLK_PERIOD
+        clk_period => CLK_PERIOD,
+        required_power_on_wait => powerup_time
     )
     port map (
         clk         => clk,
@@ -111,6 +119,9 @@ begin
     stimulus: process begin
         arst <= '0';
         wait for 1 ns;
+        arst <= '1';
+
+        wait for powerup_time;
 
         wait for CLK_PERIOD * 100;
         stop <= true;

@@ -63,17 +63,41 @@ architecture behave of basic_sdram is
     );
     constant powerup_cycles_width : integer := clog2(powerup_cycles);
 
-    signal powerup_counter : unsigned(powerup_cycles_width - 1 downto 0);
+    -- power-up cycles will always be the longest, by far. We can re-use this
+    -- counter for all states that require waits.
+    signal cycles_countdown : unsigned(powerup_cycles_width - 1 downto 0);
+
+    procedure send_command(
+        constant command   : in sdram_command_t;
+        signal cs_l_inner  : out std_logic;
+        signal cas_l_inner : out std_logic;
+        signal ras_l_inner : out std_logic;
+        signal we_l_inner  : out std_logic
+    ) is
+    begin
+        case(command) is
+            when sdram_nop =>
+                cs_l_inner  <= '0';
+                ras_l_inner <= '1';
+                cas_l_inner <= '1';
+                we_l_inner  <= '1';
+            when others =>
+                assert false report "Unimplemented command" severity failure;
+        end case;
+    end;
 begin
+
+    cke   <= '1';
 
     commands: process(clk, arst) is
     begin
         if (arst = '0') then
-            powerup_counter <= to_unsigned(powerup_cycles, powerup_cycles_width);
+            cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
+            send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
         elsif rising_edge(clk) then
-            if powerup_counter /= 0 then
-                powerup_counter <= powerup_counter - 1;
-                -- TODO: Send NOPs
+            if cycles_countdown /= 0 then
+                cycles_countdown <= cycles_countdown - 1;
+                send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
             end if;
         end if;
     end process commands;
