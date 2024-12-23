@@ -13,7 +13,7 @@ build/work/$(1)/$(1): $(2) | build/work/$(1)
 	ghdl -e --workdir=build/work/$(1) -o $$@ $(1)
 
 build/work/$(1)/meta-sim-run: build/work/$(1)/$(1)
-	scripts/run_ghdl_sim build/work/$(1)/$(1) build/work/$(1)/waves.ghw build/work/$(1)/sim.log
+	build/work/$(1)/$(1) --wave="build/work/$(1)/waves.ghw" --assert-level=error
 	touch $$@
 
 build/work/$(1):

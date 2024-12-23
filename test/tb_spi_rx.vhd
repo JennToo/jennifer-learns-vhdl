@@ -6,22 +6,6 @@ entity tb_spi_rx is
 end tb_spi_rx;
 
 architecture behav of tb_spi_rx is
-    component spi_rx
-        port (
-            clk        : in std_logic;
-            srst       : in std_logic;
-            enable     : in std_logic;
-
-            spi_clk    : in std_logic;
-            spi_mosi   : in std_logic;
-            
-            data_out   : out std_logic_vector(7 downto 0);
-            data_ready : out std_logic
-        );
-    end component;
-
-    for spi_rx_0: spi_rx use entity work.spi_rx;
-
     signal clk        : std_logic;
     signal srst       : std_logic;
     signal enable     : std_logic;
@@ -29,8 +13,10 @@ architecture behav of tb_spi_rx is
     signal spi_mosi   : std_logic;
     signal data_out   : std_logic_vector(7 downto 0);
     signal data_ready : std_logic;
+
+    signal stop: boolean := false;
 begin
-    spi_rx_0: spi_rx port map (
+    spi_rx_0: entity work.spi_rx port map (
         clk        => clk,
         srst       => srst,
         enable     => enable,
@@ -40,14 +26,16 @@ begin
         data_ready => data_ready
     );
 
-    -- clk <= '0', not clk after 1 ns;
     enable <= '1';
 
     clocker: process begin
-        clk <= '0';
-        wait for 1 ns;
-        clk <= '1';
-        wait for 1 ns;
+        while not stop loop
+            clk <= '0';
+            wait for 1 ns;
+            clk <= '1';
+            wait for 1 ns;
+        end loop;
+        wait;
     end process clocker;
 
     stimulus: process begin
@@ -90,7 +78,7 @@ begin
         wait for 5 ns;
         assert data_ready = '0' report "data should not be ready anymore" severity error;
 
-        assert false report "end of test" severity note;
+        stop <= true;
         wait;
     end process stimulus;
 end behav;
