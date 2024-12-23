@@ -26,7 +26,7 @@ end sim_sdram;
 
 architecture behav of sim_sdram is
     -- Real chip has 32 MiB, 16-bit words. But if we do that, the simulator will crash
-    constant word_count             : integer := 128;
+    constant word_count             : integer := 65536;
     constant required_power_on_wait : time    := 100 us;
 
     type memory_array is array (1 to word_count) of std_logic_vector(15 downto 0);

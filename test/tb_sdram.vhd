@@ -6,24 +6,7 @@ entity tb_sdram is
 end tb_sdram;
 
 architecture behav of tb_sdram is
-    component sim_sdram is
-        port(
-            clk   : in    std_logic;
-            cke   : in    std_logic;
-            cs_l  : in    std_logic;
-            cas_l : in    std_logic;
-            ras_l : in    std_logic;
-            we_l  : in    std_logic;
-            dqml  : in    std_logic_vector(7 downto 0);
-            dqmh  : in    std_logic_vector(7 downto 0);
-            ba    : in    std_logic_vector(1 downto 0);
-            a     : in    std_logic_vector(12 downto 0);
-            dq    : inout std_logic_vector(15 downto 0);
-            arst_model : in std_logic
-        );
-    end component;
-
-    for sim_sdram_0: sim_sdram use entity work.sim_sdram;
+    constant CLK_PERIOD : time := 10 ns; -- 100 MHz
 
     signal clk           : std_logic;
     signal cke           : std_logic;
@@ -37,8 +20,10 @@ architecture behav of tb_sdram is
     signal a             : std_logic_vector(12 downto 0);
     signal dq            : std_logic_vector(15 downto 0);
     signal arst_dram_sim : std_logic;
+
+    signal stop : boolean := false;
 begin
-    sim_sdram_0: sim_sdram port map (
+    sim_sdram_0: entity work.sim_sdram port map (
         clk           => clk,
         cke           => cke,
         cs_l          => cs_l,
@@ -54,15 +39,17 @@ begin
     );
 
     clocker: process begin
-        clk <= '0';
-        wait for 1 ns;
-        clk <= '1';
-        wait for 1 ns;
+        while not stop loop
+            clk <= '0';
+            wait for CLK_PERIOD / 2;
+            clk <= '1';
+            wait for CLK_PERIOD / 2;
+        end loop;
+        wait;
     end process clocker;
 
     stimulus: process begin
-
-        assert false report "end of test" severity note;
+        stop <= true;
         wait;
     end process stimulus;
 end behav;
