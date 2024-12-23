@@ -64,6 +64,25 @@ architecture behav of sim_sdram is
         powerup_want_lmr,
         powerup_ready
     );
+    type state_t is (
+        state_poweron,
+        state_precharge,
+        state_idle,
+        state_mode_reg,
+        -- state_self_refresh,
+        state_auto_refresh,
+        -- state_powerdown,
+        state_row_active
+        -- state_active_powerdown,
+        -- state_read,
+        -- state_read_suspend,
+        -- state_write,
+        -- state_write_suspend,
+        -- state_reada,
+        -- state_reada_suspend,
+        -- state_writea,
+        -- state_writea_suspend
+    );
     type command_t is (
         command_nop,
         command_active,
@@ -75,9 +94,11 @@ architecture behav of sim_sdram is
         command_load_mode_reg
     );
 
-    signal memory        : memory_array;
-    signal power_on_time : time            := 0 ns;
-    signal powerup_state : powerup_state_t := powerup_want_wait;
+    signal memory               : memory_array;
+    signal power_on_time        : time            := 0 ns;
+    signal powerup_state        : powerup_state_t := powerup_want_wait;
+    signal state                : state_t         := state_poweron;
+    signal last_transition_time : time            := 0 ns;
 
     function get_command(
         f_cs_l  : in std_logic;
@@ -150,4 +171,66 @@ begin
             end case;
         end if;
     end process powerup;
+
+    state_machine: process(clk, arst_model)
+        variable command : command_t;
+        variable new_state : state_t;
+    begin
+        if (arst_model = '0') then
+            state <= state_poweron;
+            last_transition_time <= now;
+        elsif (rising_edge(clk) and cke = '1') then
+            command := get_command(cs_l, ras_l, cas_l, we_l);
+            new_state := state;
+
+            -- Process automatic state transitions
+            case (state) is
+                when state_precharge =>
+                    if (now - last_transition_time >= t_rp) then
+                        new_state := state_idle;
+                        last_transition_time <= now;
+                    end if;
+                when others =>
+                    -- Don't care
+            end case;
+
+            -- Process commands
+            case (new_state) is
+                when state_poweron =>
+                    case (command) is
+                        when command_nop =>
+                            -- Don't care
+                        when command_precharge =>
+                            new_state := state_precharge;
+                            last_transition_time <= now;
+                        when others =>
+                            assert false report "invalid command while in poweron state" severity error;
+                    end case;
+                when state_precharge =>
+                    case (command) is
+                        when command_nop =>
+                        when others =>
+                            assert false report "invalid command while in precharge state" severity error;
+                    end case;
+                when state_idle =>
+                    case (command) is
+                        when command_load_mode_reg =>
+                            new_state := state_mode_reg;
+                            last_transition_time <= now;
+                        when command_refresh =>
+                            new_state := state_auto_refresh;
+                            last_transition_time <= now;
+                        when command_active =>
+                            new_state := state_row_active;
+                            last_transition_time <= now;
+                        when others =>
+                            assert false report "invalid command while in idle state" severity error;
+                    end case;
+                when others =>
+                    assert false report "state not implemented" severity error;
+            end case;
+
+            state <= new_state;
+        end if;
+    end process state_machine;
 end behav;

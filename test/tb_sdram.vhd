@@ -49,6 +49,7 @@ begin
     end process clocker;
 
     stimulus: process begin
+        wait for CLK_PERIOD * 100;
         stop <= true;
         wait;
     end process stimulus;
