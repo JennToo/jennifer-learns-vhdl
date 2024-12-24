@@ -8,9 +8,9 @@ waves-$(1):
 	gtkwave build/work/$(1)/waves.ghw
 
 build/work/$(1)/$(1): $(2) | build/work/$(1)
-	ghdl -s --workdir=build/work/$(1) $(2)
-	ghdl -a -Wall --workdir=build/work/$(1) $(2)
-	ghdl -e --workdir=build/work/$(1) -o $$@ $(1)
+	ghdl -s --std=08 --workdir=build/work/$(1) $(2)
+	ghdl -a --std=08 -Wall --workdir=build/work/$(1) $(2)
+	ghdl -e --std=08 --workdir=build/work/$(1) -o $$@ $(1)
 
 build/work/$(1)/meta-sim-run: build/work/$(1)/$(1)
 	build/work/$(1)/$(1) --wave="build/work/$(1)/waves.ghw" --assert-level=error

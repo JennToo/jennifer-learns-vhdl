@@ -100,6 +100,7 @@ architecture behav of sim_sdram is
     signal state                : state_t         := state_poweron;
     signal last_transition_time : time            := 0 ns;
     signal seen_refreshes       : integer         := 0;
+    signal cas_latency          : std_logic_vector(2 downto 0);
 
     function get_command(
         f_cs_l  : in std_logic;
@@ -188,6 +189,7 @@ begin
         if (arst_model = '0') then
             state <= state_poweron;
             last_transition_time <= now;
+            cas_latency <= "UUU";
         elsif (rising_edge(clk) and cke = '1') then
             command := get_command(cs_l, ras_l, cas_l, we_l);
             new_state := state;
@@ -225,31 +227,53 @@ begin
                             new_state := state_precharge;
                             last_transition_time <= now;
                         when others =>
-                            assert false report "invalid command while in poweron state" severity error;
+                            assert false 
+                                report "invalid command while in poweron state"
+                                severity error;
                     end case;
                 when state_precharge =>
                     case (command) is
                         when command_nop =>
                         when others =>
-                            assert false report "invalid command while in precharge state" severity error;
+                            assert false 
+                                report "invalid command while in precharge state"
+                                severity error;
                     end case;
                 when state_auto_refresh =>
                     case (command) is
                         when command_nop =>
                         when others =>
-                            assert false report "invalid command while in auto-refresh state" severity error;
+                            assert false
+                                report "invalid command while in auto-refresh state"
+                                severity error;
                     end case;
                 when state_mode_reg =>
                     case (command) is
                         when command_nop =>
                         when others =>
-                            assert false report "invalid command while in LMR state" severity error;
+                            assert false
+                                report "invalid command while in LMR state"
+                                severity error;
                     end case;
                 when state_idle =>
                     case (command) is
                         when command_load_mode_reg =>
                             new_state := state_mode_reg;
                             last_transition_time <= now;
+                            assert (ba = "00")
+                                report "invalid bank address in LMR"
+                                severity error;
+                            assert (a(12 downto 7) = "000000")
+                                report "invalid address in LMR " & to_string(a(12 downto 7))
+                                severity error;
+                            assert (a(6 downto 4) = "010" or a(6 downto 4) = "011")
+                                report "invalid CAS latency in LMR" & to_string(a(6 downto 4))
+                                severity error;
+                            -- Other modes are legal, but not supported by the simulation yet
+                            assert (a(3 downto 0) = "0000")
+                                report "unsupported burst length in LMR" & to_string(a(3 downto 0))
+                                severity error;
+                            cas_latency <= a(6 downto 4);
                         when command_refresh =>
                             new_state := state_auto_refresh;
                             last_transition_time <= now;
