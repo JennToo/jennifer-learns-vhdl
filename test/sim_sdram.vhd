@@ -30,7 +30,7 @@ entity sim_sdram is
         t_mrd                   : time := 15 ns;
         -- Refresh cycle time
         t_ref                   : time := 64 ms;
-        refresh_count           : integer := 8192
+        periodic_refresh_count  : integer := 8192
     );
 
     port(
@@ -94,13 +94,16 @@ architecture behav of sim_sdram is
         command_load_mode_reg
     );
 
-    signal memory               : memory_array;
-    signal power_on_time        : time            := 0 ns;
-    signal powerup_state        : powerup_state_t := powerup_want_wait;
-    signal state                : state_t         := state_poweron;
-    signal last_transition_time : time            := 0 ns;
-    signal seen_refreshes       : integer         := 0;
-    signal cas_latency          : std_logic_vector(2 downto 0);
+    signal memory                  : memory_array;
+    signal cas_latency             : std_logic_vector(2 downto 0);
+
+    signal power_on_time           : time            := 0 ns;
+    signal powerup_state           : powerup_state_t := powerup_want_wait;
+    signal state                   : state_t         := state_poweron;
+    signal last_transition_time    : time            := 0 ns;
+    signal seen_startup_refreshes  : integer         := 0;
+    signal seen_periodic_refreshes : integer         := 0;
+    signal last_full_refresh_time  : time            := 0 ns;
 
     function get_command(
         f_cs_l  : in std_logic;
@@ -142,7 +145,7 @@ begin
         if (arst_model = '0') then
             power_on_time <= now;
             powerup_state <= powerup_want_wait;
-            seen_refreshes <= 0;
+            seen_startup_refreshes <= 0;
             for word in 0 to word_count loop
                 memory(word) <= "UUUUUUUUUUUUUUUU";
             end loop;
@@ -165,8 +168,8 @@ begin
                 when powerup_want_refresh =>
                     if(command /= command_nop) then
                         assert command = command_refresh report "expecting refresh" severity error;
-                        if (seen_refreshes < power_on_refresh_count - 1) then
-                            seen_refreshes <= seen_refreshes + 1;
+                        if (seen_startup_refreshes < power_on_refresh_count - 1) then
+                            seen_startup_refreshes <= seen_startup_refreshes + 1;
                         else
                             powerup_state <= powerup_want_lmr;
                         end if;
@@ -190,9 +193,15 @@ begin
             state <= state_poweron;
             last_transition_time <= now;
             cas_latency <= "UUU";
+            seen_periodic_refreshes <= 0;
+            last_full_refresh_time <= now;
         elsif (rising_edge(clk) and cke = '1') then
             command := get_command(cs_l, ras_l, cas_l, we_l);
             new_state := state;
+
+            assert (now - last_full_refresh_time < t_ref)
+                report "missed periodic refresh; last was at " & time'image(last_full_refresh_time)
+                severity error;
 
             -- Process automatic state transitions
             case (state) is
@@ -207,6 +216,12 @@ begin
                         -- but t_rc is easier to use
                         new_state := state_idle;
                         last_transition_time <= now;
+                        if (seen_periodic_refreshes < periodic_refresh_count - 1) then
+                            seen_periodic_refreshes <= seen_periodic_refreshes + 1;
+                        else
+                            seen_periodic_refreshes <= 0;
+                            last_full_refresh_time <= now;
+                        end if;
                     end if;
                 when state_mode_reg =>
                     if (now - last_transition_time >= t_mrd) then
