@@ -1,6 +1,7 @@
 library ieee;
    use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
+   use work.test_util.all;
 
 entity tb_sdram is
 end tb_sdram;
@@ -122,6 +123,24 @@ begin
         arst <= '1';
 
         wait for powerup_time;
+
+        axi_write_word(
+            (others => '0'),
+            std_logic_vector(to_unsigned(42, 16)),
+            CLK_PERIOD * 20,
+            clk,
+            axi_awvalid,
+            axi_awready,
+            axi_awaddr,
+            axi_awprot,
+            axi_wvalid,
+            axi_wready,
+            axi_wdata,
+            axi_wstrb,
+            axi_bvalid,
+            axi_bready,
+            axi_bresp
+        );
 
         wait for CLK_PERIOD * 100;
         stop <= true;
