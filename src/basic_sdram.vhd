@@ -67,12 +67,15 @@ architecture behave of basic_sdram is
         we_l  : std_logic;
     end record;
 
-    -- power-up cycles will always be the longest, by far. We can re-use this
-    -- counter for all states that require waits.
-    signal cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
-    signal state                       : state_t;
-    signal remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
-    signal command_bits_hookup         : command_bits_t;
+    type internal_state_t is record
+        -- power-up cycles will always be the longest, by far. We can re-use this
+        -- counter for all states that require waits.
+        cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
+        state                       : state_t;
+        remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
+    end record;
+    signal internal_state      : internal_state_t;
+    signal command_bits_hookup : command_bits_t;
 
     procedure send_command(
         constant command    : in sdram_command_t;
@@ -109,32 +112,33 @@ architecture behave of basic_sdram is
         constant next_state : in state_t;
         constant total_powerup_refreshes_n : in integer;
 
-        signal state_n                 : out state_t;
-        signal command_bits            : out command_bits_t;
-        signal ba_n                    : out std_logic_vector(1 downto 0);
-        signal a_n                     : out std_logic_vector(12 downto 0);
-        signal cycles_countdown_n      : out unsigned(powerup_cycles_width - 1 downto 0);
-        signal remaining_powerup_refreshes_n : out unsigned(refresh_count_width - 1 downto 0)
+        signal internal_state_n : out internal_state_t;
+        signal command_bits     : out command_bits_t;
+        signal ba_n             : out std_logic_vector(1 downto 0);
+        signal a_n              : out std_logic_vector(12 downto 0)
     ) is
     begin
         case(next_state) is
             when state_powerup_precharge =>
                 a_n(10) <= '1';
                 send_command(sdram_precharge, command_bits);
-                cycles_countdown_n <= to_unsigned(t_rp_cycles, powerup_cycles_width);
+                internal_state_n.cycles_countdown <= to_unsigned(t_rp_cycles, powerup_cycles_width);
             when state_powerup_refresh =>
                 send_command(sdram_refresh, command_bits);
-                cycles_countdown_n <= to_unsigned(t_rc_cycles, powerup_cycles_width);
-                remaining_powerup_refreshes_n <= to_unsigned(total_powerup_refreshes_n-1, refresh_count_width);
+                internal_state_n.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
+                internal_state_n.remaining_powerup_refreshes <=
+                    to_unsigned(total_powerup_refreshes_n-1, refresh_count_width);
             when state_powerup_mode_register =>
                 ba_n <= "00";
                 a_n <= "0000000100000";
                 send_command(sdram_load_mode_reg, command_bits);
-                cycles_countdown_n <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
+                internal_state_n.cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
+            when state_idle =>
+                send_command(sdram_nop, command_bits);
             when others =>
                 assert false report "Unimplemented state transition" severity failure;
         end case;
-        state_n <= next_state;
+        internal_state_n.state <= next_state;
     end procedure transition_to_state;
 begin
 
@@ -147,58 +151,59 @@ begin
     commands: process(clk, arst) is
     begin
         if (arst = '0') then
-            cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
+            internal_state.cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
             send_command(sdram_nop, command_bits_hookup);
-            state <= state_powerup_wait;
+            internal_state.state <= state_powerup_wait;
         elsif rising_edge(clk) then
-            if cycles_countdown /= 0 then
-                cycles_countdown <= cycles_countdown - 1;
+            if internal_state.cycles_countdown /= 0 then
+                internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
                 send_command(sdram_nop, command_bits_hookup);
             else
                 -- Finished waiting
-                case(state) is
+                case(internal_state.state) is
                     when state_powerup_wait =>
                         transition_to_state(
                             state_powerup_precharge,
                             total_powerup_refreshes,
-                            state,
+                            internal_state,
                             command_bits_hookup,
                             ba,
-                            a,
-                            cycles_countdown,
-                            remaining_powerup_refreshes
+                            a
                         );
                     when state_powerup_precharge =>
                         transition_to_state(
                             state_powerup_refresh,
                             total_powerup_refreshes,
-                            state,
+                            internal_state,
                             command_bits_hookup,
                             ba,
-                            a,
-                            cycles_countdown,
-                            remaining_powerup_refreshes
+                            a
                         );
                     when state_powerup_refresh =>
-                        if remaining_powerup_refreshes = 0 then
+                        if internal_state.remaining_powerup_refreshes = 0 then
                             transition_to_state(
                                 state_powerup_mode_register,
                                 total_powerup_refreshes,
-                                state,
+                                internal_state,
                                 command_bits_hookup,
                                 ba,
-                                a,
-                                cycles_countdown,
-                                remaining_powerup_refreshes
+                                a
                             );
                         else
-                            remaining_powerup_refreshes <= remaining_powerup_refreshes - 1;
+                            internal_state.remaining_powerup_refreshes <=
+                                internal_state.remaining_powerup_refreshes - 1;
                             send_command(sdram_refresh, command_bits_hookup);
-                            cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
+                            internal_state.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                         end if;
                     when state_powerup_mode_register =>
-                        state <= state_idle;
-                        send_command(sdram_nop, command_bits_hookup);
+                        transition_to_state(
+                            state_idle,
+                            total_powerup_refreshes,
+                            internal_state,
+                            command_bits_hookup,
+                            ba,
+                            a
+                        );
                     when state_idle =>
                         send_command(sdram_nop, command_bits_hookup);
                     when others =>
