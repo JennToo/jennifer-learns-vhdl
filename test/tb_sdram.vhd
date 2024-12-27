@@ -2,6 +2,7 @@ library ieee;
    use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
    use work.test_util.all;
+   use work.util.all;
 
 entity tb_sdram is
 end tb_sdram;
@@ -12,25 +13,8 @@ architecture behav of tb_sdram is
     -- simulation waveforms harder to read.
     constant powerup_time : time := 50 * CLK_PERIOD;
 
-    signal axi_awvalid : std_logic;
-    signal axi_awready : std_logic;
-    signal axi_awaddr  : std_logic_vector(31 downto 0);
-    signal axi_awprot  : std_logic_vector(2 downto 0);
-    signal axi_wvalid  : std_logic;
-    signal axi_wready  : std_logic;
-    signal axi_wdata   : std_logic_vector(15 downto 0);
-    signal axi_wstrb   : std_logic_vector(1 downto 0);
-    signal axi_bvalid  : std_logic;
-    signal axi_bready  : std_logic;
-    signal axi_bresp   : std_logic_vector(1 downto 0);
-    signal axi_arvalid : std_logic;
-    signal axi_arready : std_logic;
-    signal axi_araddr  : std_logic_vector(31 downto 0);
-    signal axi_arprot  : std_logic_vector(2 downto 0);
-    signal axi_rvalid  : std_logic;
-    signal axi_rready  : std_logic;
-    signal axi_rdata   : std_logic_vector(15 downto 0);
-    signal axi_rresp   : std_logic_vector(1 downto 0);
+    signal axi_initiator : axi4l_initiator_signals_t;
+    signal axi_target    : axi4l_target_signals_t;
 
     signal clk   : std_logic;
     signal cke   : std_logic;
@@ -72,39 +56,22 @@ begin
         required_power_on_wait => powerup_time
     )
     port map (
-        clk         => clk,
-        arst        => arst,
-        axi_awvalid => axi_awvalid,
-        axi_awready => axi_awready,
-        axi_awaddr  => axi_awaddr,
-        axi_awprot  => axi_awprot,
-        axi_wvalid  => axi_wvalid,
-        axi_wready  => axi_wready,
-        axi_wdata   => axi_wdata,
-        axi_wstrb   => axi_wstrb,
-        axi_bvalid  => axi_bvalid,
-        axi_bready  => axi_bready,
-        axi_bresp   => axi_bresp,
-        axi_arvalid => axi_arvalid,
-        axi_arready => axi_arready,
-        axi_araddr  => axi_araddr,
-        axi_arprot  => axi_arprot,
-        axi_rvalid  => axi_rvalid,
-        axi_rready  => axi_rready,
-        axi_rdata   => axi_rdata,
-        axi_rresp   => axi_rresp,
-        cke         => cke,
-        cs_l        => cs_l,
-        cas_l       => cas_l,
-        ras_l       => ras_l,
-        we_l        => we_l,
-        dqml        => dqml,
-        dqmh        => dqmh,
-        ba          => ba,
-        a           => a,
-        dq_o        => dq,
-        dq_i        => dq,
-        dq_oe       => open
+        clk           => clk,
+        arst          => arst,
+        axi_initiator => axi_initiator,
+        axi_target    => axi_target,
+        cke           => cke,
+        cs_l          => cs_l,
+        cas_l         => cas_l,
+        ras_l         => ras_l,
+        we_l          => we_l,
+        dqml          => dqml,
+        dqmh          => dqmh,
+        ba            => ba,
+        a             => a,
+        dq_o          => dq,
+        dq_i          => dq,
+        dq_oe         => open
     );
 
     clocker: process begin
@@ -129,17 +96,8 @@ begin
             std_logic_vector(to_unsigned(42, 16)),
             CLK_PERIOD * 20,
             clk,
-            axi_awvalid,
-            axi_awready,
-            axi_awaddr,
-            axi_awprot,
-            axi_wvalid,
-            axi_wready,
-            axi_wdata,
-            axi_wstrb,
-            axi_bvalid,
-            axi_bready,
-            axi_bresp
+            axi_initiator,
+            axi_target
         );
 
         wait for CLK_PERIOD * 100;

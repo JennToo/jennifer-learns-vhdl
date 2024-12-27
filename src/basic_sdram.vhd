@@ -19,31 +19,8 @@ entity basic_sdram is
         clk  : in std_logic;
         arst : in std_logic;
 
-        -- AXI-4 Lite signals
-        -- Write address
-        axi_awvalid : in std_logic;
-        axi_awready : out std_logic;
-        axi_awaddr  : in std_logic_vector(31 downto 0);
-        axi_awprot  : in std_logic_vector(2 downto 0);
-        -- Write data
-        axi_wvalid : in std_logic;
-        axi_wready : out std_logic;
-        axi_wdata  : in std_logic_vector(15 downto 0);
-        axi_wstrb  : in std_logic_vector(1 downto 0);
-        -- Write response
-        axi_bvalid : out std_logic;
-        axi_bready : in std_logic;
-        axi_bresp  : out std_logic_vector(1 downto 0);
-        -- Read address
-        axi_arvalid : in std_logic;
-        axi_arready : out std_logic;
-        axi_araddr  : in std_logic_vector(31 downto 0);
-        axi_arprot  : in std_logic_vector(2 downto 0);
-        -- Read data
-        axi_rvalid : out std_logic;
-        axi_rready : in std_logic;
-        axi_rdata  : out std_logic_vector(15 downto 0);
-        axi_rresp  : out std_logic_vector(1 downto 0);
+        axi_initiator : in axi4l_initiator_signals_t;
+        axi_target    : out axi4l_target_signals_t;
 
         -- Signals to the chip
         cke   : out std_logic;
