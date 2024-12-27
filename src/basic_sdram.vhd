@@ -83,41 +83,46 @@ architecture behave of basic_sdram is
         state_precharge
     );
 
+    type command_bits_t is record
+        cs_l  : std_logic;
+        cas_l : std_logic;
+        ras_l : std_logic;
+        we_l  : std_logic;
+    end record;
+
     -- power-up cycles will always be the longest, by far. We can re-use this
     -- counter for all states that require waits.
     signal cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
     signal state                       : state_t;
     signal remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
+    signal command_bits_hookup         : command_bits_t;
 
     procedure send_command(
-        constant command   : in sdram_command_t;
-        signal cs_l_n  : out std_logic;
-        signal cas_l_n : out std_logic;
-        signal ras_l_n : out std_logic;
-        signal we_l_n  : out std_logic
+        constant command    : in sdram_command_t;
+        signal command_bits : out command_bits_t
     ) is
     begin
         case(command) is
             when sdram_nop =>
-                cs_l_n  <= '0';
-                ras_l_n <= '1';
-                cas_l_n <= '1';
-                we_l_n  <= '1';
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '1';
+                command_bits.cas_l <= '1';
+                command_bits.we_l  <= '1';
             when sdram_precharge =>
-                cs_l_n  <= '0';
-                ras_l_n <= '0';
-                cas_l_n <= '1';
-                we_l_n  <= '0';
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '0';
+                command_bits.cas_l <= '1';
+                command_bits.we_l  <= '0';
             when sdram_refresh =>
-                cs_l_n  <= '0';
-                ras_l_n <= '0';
-                cas_l_n <= '0';
-                we_l_n  <= '1';
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '0';
+                command_bits.cas_l <= '0';
+                command_bits.we_l  <= '1';
             when sdram_load_mode_reg =>
-                cs_l_n  <= '0';
-                ras_l_n <= '0';
-                cas_l_n <= '0';
-                we_l_n  <= '0';
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '0';
+                command_bits.cas_l <= '0';
+                command_bits.we_l  <= '0';
             when others =>
                 assert false report "Unimplemented command" severity failure;
         end case;
@@ -128,10 +133,7 @@ architecture behave of basic_sdram is
         constant total_powerup_refreshes_n : in integer;
 
         signal state_n                 : out state_t;
-        signal cs_l_n                  : out std_logic;
-        signal cas_l_n                 : out std_logic;
-        signal ras_l_n                 : out std_logic;
-        signal we_l_n                  : out std_logic;
+        signal command_bits            : out command_bits_t;
         signal ba_n                    : out std_logic_vector(1 downto 0);
         signal a_n                     : out std_logic_vector(12 downto 0);
         signal cycles_countdown_n      : out unsigned(powerup_cycles_width - 1 downto 0);
@@ -141,16 +143,16 @@ architecture behave of basic_sdram is
         case(next_state) is
             when state_powerup_precharge =>
                 a_n(10) <= '1';
-                send_command(sdram_precharge, cs_l_n, cas_l_n, ras_l_n, we_l_n);
+                send_command(sdram_precharge, command_bits);
                 cycles_countdown_n <= to_unsigned(t_rp_cycles, powerup_cycles_width);
             when state_powerup_refresh =>
-                send_command(sdram_refresh, cs_l_n, cas_l_n, ras_l_n, we_l_n);
+                send_command(sdram_refresh, command_bits);
                 cycles_countdown_n <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                 remaining_powerup_refreshes_n <= to_unsigned(total_powerup_refreshes_n-1, refresh_count_width);
             when state_powerup_mode_register =>
                 ba_n <= "00";
                 a_n <= "0000000100000";
-                send_command(sdram_load_mode_reg, cs_l_n, cas_l_n, ras_l_n, we_l_n);
+                send_command(sdram_load_mode_reg, command_bits);
                 cycles_countdown_n <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
             when others =>
                 assert false report "Unimplemented state transition" severity failure;
@@ -160,17 +162,21 @@ architecture behave of basic_sdram is
 begin
 
     cke   <= '1';
+    cs_l  <= command_bits_hookup.cs_l;
+    cas_l <= command_bits_hookup.cas_l;
+    ras_l <= command_bits_hookup.ras_l;
+    we_l  <= command_bits_hookup.we_l;
 
     commands: process(clk, arst) is
     begin
         if (arst = '0') then
             cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
-            send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
+            send_command(sdram_nop, command_bits_hookup);
             state <= state_powerup_wait;
         elsif rising_edge(clk) then
             if cycles_countdown /= 0 then
                 cycles_countdown <= cycles_countdown - 1;
-                send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
+                send_command(sdram_nop, command_bits_hookup);
             else
                 -- Finished waiting
                 case(state) is
@@ -179,10 +185,7 @@ begin
                             state_powerup_precharge,
                             total_powerup_refreshes,
                             state,
-                            cs_l,
-                            cas_l,
-                            ras_l,
-                            we_l,
+                            command_bits_hookup,
                             ba,
                             a,
                             cycles_countdown,
@@ -193,10 +196,7 @@ begin
                             state_powerup_refresh,
                             total_powerup_refreshes,
                             state,
-                            cs_l,
-                            cas_l,
-                            ras_l,
-                            we_l,
+                            command_bits_hookup,
                             ba,
                             a,
                             cycles_countdown,
@@ -208,10 +208,7 @@ begin
                                 state_powerup_mode_register,
                                 total_powerup_refreshes,
                                 state,
-                                cs_l,
-                                cas_l,
-                                ras_l,
-                                we_l,
+                                command_bits_hookup,
                                 ba,
                                 a,
                                 cycles_countdown,
@@ -219,14 +216,14 @@ begin
                             );
                         else
                             remaining_powerup_refreshes <= remaining_powerup_refreshes - 1;
-                            send_command(sdram_refresh, cs_l, cas_l, ras_l, we_l);
+                            send_command(sdram_refresh, command_bits_hookup);
                             cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                         end if;
                     when state_powerup_mode_register =>
                         state <= state_idle;
-                        send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
+                        send_command(sdram_nop, command_bits_hookup);
                     when state_idle =>
-                        send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
+                        send_command(sdram_nop, command_bits_hookup);
                     when others =>
                         assert false report "Unimplemented state" severity failure;
                 end case;
