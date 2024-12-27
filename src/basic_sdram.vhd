@@ -8,12 +8,12 @@ library work;
 -- request and closes it automatically.
 entity basic_sdram is
     generic (
-        clk_period             : time;
-        required_power_on_wait : time    := 200 us;
-        power_on_refresh_count : integer := 8;
-        t_rp                   : time    := 20 ns;
-        t_mrd                  : time    := 15 ns;
-        t_rc                   : time    := 67.5 ns
+        clk_period              : time;
+        required_power_on_wait  : time    := 200 us;
+        total_powerup_refreshes : integer := 8;
+        t_rp                    : time    := 20 ns;
+        t_mrd                   : time    := 15 ns;
+        t_rc                    : time    := 67.5 ns
     );
     port(
         clk  : in std_logic;
@@ -66,10 +66,10 @@ architecture behave of basic_sdram is
         required_power_on_wait, clk_period
     );
     constant powerup_cycles_width : integer := clog2(powerup_cycles);
-    constant t_rp_cycles : integer := period_to_cycles(t_rp, clk_period);
-    constant t_rc_cycles : integer := period_to_cycles(t_rc, clk_period);
-    constant t_mrd_cycles : integer := period_to_cycles(t_mrd, clk_period);
-    constant refresh_count_width : integer := clog2(power_on_refresh_count);
+    constant t_rp_cycles          : integer := period_to_cycles(t_rp, clk_period);
+    constant t_rc_cycles          : integer := period_to_cycles(t_rc, clk_period);
+    constant t_mrd_cycles         : integer := period_to_cycles(t_mrd, clk_period);
+    constant refresh_count_width  : integer := clog2(total_powerup_refreshes);
 
     type state_t is (
         state_powerup_wait,
@@ -85,9 +85,9 @@ architecture behave of basic_sdram is
 
     -- power-up cycles will always be the longest, by far. We can re-use this
     -- counter for all states that require waits.
-    signal cycles_countdown : unsigned(powerup_cycles_width - 1 downto 0);
-    signal state    : state_t;
-    signal powerup_refresh_count : unsigned(refresh_count_width - 1 downto 0);
+    signal cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
+    signal state                       : state_t;
+    signal remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
 
     procedure send_command(
         constant command   : in sdram_command_t;
@@ -125,15 +125,17 @@ architecture behave of basic_sdram is
 
     procedure transition_to_state(
         constant next_state : in state_t;
+        constant total_powerup_refreshes_n : in integer;
 
-        signal state_n            : out state_t;
-        signal cs_l_n             : out std_logic;
-        signal cas_l_n            : out std_logic;
-        signal ras_l_n            : out std_logic;
-        signal we_l_n             : out std_logic;
-        signal ba_n               : out std_logic_vector(1 downto 0);
-        signal a_n                : out std_logic_vector(12 downto 0);
-        signal cycles_countdown_n : out unsigned(powerup_cycles_width - 1 downto 0)
+        signal state_n                 : out state_t;
+        signal cs_l_n                  : out std_logic;
+        signal cas_l_n                 : out std_logic;
+        signal ras_l_n                 : out std_logic;
+        signal we_l_n                  : out std_logic;
+        signal ba_n                    : out std_logic_vector(1 downto 0);
+        signal a_n                     : out std_logic_vector(12 downto 0);
+        signal cycles_countdown_n      : out unsigned(powerup_cycles_width - 1 downto 0);
+        signal remaining_powerup_refreshes_n : out unsigned(refresh_count_width - 1 downto 0)
     ) is
     begin
         case(next_state) is
@@ -144,7 +146,12 @@ architecture behave of basic_sdram is
             when state_powerup_refresh =>
                 send_command(sdram_refresh, cs_l_n, cas_l_n, ras_l_n, we_l_n);
                 cycles_countdown_n <= to_unsigned(t_rc_cycles, powerup_cycles_width);
-                powerup_refresh_count_n <= to_unsigned(power_on_refresh_count_n-1, refresh_count_width);
+                remaining_powerup_refreshes_n <= to_unsigned(total_powerup_refreshes_n-1, refresh_count_width);
+            when state_powerup_mode_register =>
+                ba_n <= "00";
+                a_n <= "0000000100000";
+                send_command(sdram_load_mode_reg, cs_l_n, cas_l_n, ras_l_n, we_l_n);
+                cycles_countdown_n <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
             when others =>
                 assert false report "Unimplemented state transition" severity failure;
         end case;
@@ -170,6 +177,7 @@ begin
                     when state_powerup_wait =>
                         transition_to_state(
                             state_powerup_precharge,
+                            total_powerup_refreshes,
                             state,
                             cs_l,
                             cas_l,
@@ -177,11 +185,13 @@ begin
                             we_l,
                             ba,
                             a,
-                            cycles_countdown
+                            cycles_countdown,
+                            remaining_powerup_refreshes
                         );
                     when state_powerup_precharge =>
                         transition_to_state(
                             state_powerup_refresh,
+                            total_powerup_refreshes,
                             state,
                             cs_l,
                             cas_l,
@@ -189,25 +199,34 @@ begin
                             we_l,
                             ba,
                             a,
-                            cycles_countdown
+                            cycles_countdown,
+                            remaining_powerup_refreshes
                         );
                     when state_powerup_refresh =>
-                        if powerup_refresh_count = 0 then
-                            state <= state_powerup_mode_register;
-                            -- TODO Send mode register command
+                        if remaining_powerup_refreshes = 0 then
+                            transition_to_state(
+                                state_powerup_mode_register,
+                                total_powerup_refreshes,
+                                state,
+                                cs_l,
+                                cas_l,
+                                ras_l,
+                                we_l,
+                                ba,
+                                a,
+                                cycles_countdown,
+                                remaining_powerup_refreshes
+                            );
                         else
-                            powerup_refresh_count <= powerup_refresh_count - 1;
+                            remaining_powerup_refreshes <= remaining_powerup_refreshes - 1;
                             send_command(sdram_refresh, cs_l, cas_l, ras_l, we_l);
                             cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                         end if;
                     when state_powerup_mode_register =>
-                        ba <= "00";
-                        a <= "0000000100000";
-                        send_command(sdram_load_mode_reg, cs_l, cas_l, ras_l, we_l);
-                        cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
                         state <= state_idle;
+                        send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
                     when state_idle =>
-                        -- Do nothing
+                        send_command(sdram_nop, cs_l, cas_l, ras_l, we_l);
                     when others =>
                         assert false report "Unimplemented state" severity failure;
                 end case;
