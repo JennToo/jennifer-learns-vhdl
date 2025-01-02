@@ -90,6 +90,7 @@ begin
         arst <= '1';
 
         wait for powerup_time;
+        wait for CLK_PERIOD * 100;
 
         axi_write_word(
             (others => '0'),

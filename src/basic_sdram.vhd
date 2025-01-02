@@ -56,8 +56,7 @@ architecture behave of basic_sdram is
         state_idle,
         state_refresh,
         state_activate,
-        state_execute,
-        state_precharge
+        state_execute_write
     );
 
     type command_bits_t is record
@@ -76,6 +75,13 @@ architecture behave of basic_sdram is
     end record;
     signal internal_state      : internal_state_t;
     signal command_bits_hookup : command_bits_t;
+    signal read_address                : std_logic_vector(23 downto 0);
+    signal write_address               : std_logic_vector(23 downto 0);
+    signal write_data                  : std_logic_vector(15 downto 0);
+    signal write_strobe                : std_logic_vector(1 downto 0);
+    signal read_address_stored         : std_logic;
+    signal write_address_stored        : std_logic;
+    signal write_data_stored           : std_logic;
 
     procedure send_command(
         constant command    : in sdram_command_t;
@@ -103,13 +109,18 @@ architecture behave of basic_sdram is
                 command_bits.ras_l <= '0';
                 command_bits.cas_l <= '0';
                 command_bits.we_l  <= '0';
+            when sdram_active =>
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '0';
+                command_bits.cas_l <= '1';
+                command_bits.we_l  <= '1';
             when others =>
                 assert false report "Unimplemented command" severity failure;
         end case;
     end;
 
     procedure transition_to_state(
-        constant next_state : in state_t;
+        constant next_state                : in state_t;
         constant total_powerup_refreshes_n : in integer;
 
         signal internal_state_n : out internal_state_t;
@@ -135,6 +146,7 @@ architecture behave of basic_sdram is
                 internal_state_n.cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
             when state_idle =>
                 send_command(sdram_nop, command_bits);
+                internal_state_n.cycles_countdown <= to_unsigned(0, powerup_cycles_width);
             when others =>
                 assert false report "Unimplemented state transition" severity failure;
         end case;
@@ -205,12 +217,52 @@ begin
                             a
                         );
                     when state_idle =>
-                        send_command(sdram_nop, command_bits_hookup);
+                        -- Technically we could wait for just the address, but
+                        -- then we risk getting stuck in ACTIVATE until the
+                        -- initiator gives us the data. Which could cause us to
+                        -- miss refreshes.
+                        if (write_address_stored = '1' and write_data_stored = '1') then
+                            ba <= write_address(23 downto 22);
+                            a <= write_address(21 downto 9);
+                            send_command(sdram_active, command_bits_hookup);
+                            internal_state.state <= state_activate;
+                        else
+                            send_command(sdram_nop, command_bits_hookup);
+                        end if;
                     when others =>
                         assert false report "Unimplemented state" severity failure;
                 end case;
             end if;
         end if;
     end process commands;
+
+    axi_target.awready <= not write_address_stored;
+    axi_target.wready  <= not write_data_stored;
+    axi_target.arready <= not read_address_stored;
+
+    axi_handler: process(clk, arst) is
+    begin
+        if (arst = '0') then
+            write_address_stored <= '0';
+            write_data_stored    <= '0';
+            read_address_stored  <= '0';
+        elsif rising_edge(clk) then
+            if (axi_initiator.awvalid = '1') then
+                -- We ignore the last bit of the address, but otherwise assume
+                -- that any address mapping has already happened
+                write_address <= axi_initiator.awaddr(24 downto 1);
+                write_address_stored <= '1';
+            end if;
+            if (axi_initiator.wvalid = '1') then
+                write_data <= axi_initiator.wdata;
+                write_strobe <= axi_initiator.wstrb;
+                write_data_stored <= '1';
+            end if;
+            if (axi_initiator.arvalid = '1') then
+                read_address <= axi_initiator.araddr;
+                read_address_stored <= '1';
+            end if;
+        end if;
+    end process axi_handler;
 
 end behave;
