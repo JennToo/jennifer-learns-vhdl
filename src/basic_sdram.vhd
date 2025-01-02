@@ -85,6 +85,8 @@ architecture behave of basic_sdram is
     signal read_address_stored  : std_logic;
     signal write_address_stored : std_logic;
     signal write_data_stored    : std_logic;
+    signal write_complete       : std_logic;
+    signal bvalid               : std_logic;
 
     procedure send_command(
         constant command    : in sdram_command_t;
@@ -174,7 +176,9 @@ begin
             internal_state.cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
             send_command(sdram_nop, command_bits_hookup);
             internal_state.state <= state_powerup_wait;
+            write_complete <= '0';
         elsif rising_edge(clk) then
+            write_complete <= '0';
             if internal_state.cycles_countdown /= 0 then
                 internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
                 a     <= (others => 'U');
@@ -257,6 +261,7 @@ begin
                             -- TODO: need to remember that we were waiting, to send response
                             internal_state.state <= state_idle;
                             internal_state.cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
+                            write_complete <= '1';
                         end if;
                     when others =>
                         assert false report "Unimplemented state" severity failure;
@@ -268,6 +273,7 @@ begin
     axi_target.awready <= not write_address_stored;
     axi_target.wready  <= not write_data_stored;
     axi_target.arready <= not read_address_stored;
+    axi_target.bvalid  <= bvalid;
 
     axi_handler: process(clk, arst) is
     begin
@@ -276,20 +282,32 @@ begin
             write_data_stored    <= '0';
             read_address_stored  <= '0';
         elsif rising_edge(clk) then
-            if (axi_initiator.awvalid = '1') then
+            if (axi_initiator.awvalid = '1' and write_address_stored = '0') then
                 -- We ignore the last bit of the address, but otherwise assume
                 -- that any address mapping has already happened
                 write_address <= axi_initiator.awaddr(24 downto 1);
                 write_address_stored <= '1';
             end if;
-            if (axi_initiator.wvalid = '1') then
+            if (axi_initiator.wvalid = '1' and write_data_stored = '0') then
                 write_data <= axi_initiator.wdata;
                 write_strobe <= axi_initiator.wstrb;
                 write_data_stored <= '1';
             end if;
-            if (axi_initiator.arvalid = '1') then
+            if (axi_initiator.arvalid = '1' and read_address_stored = '0') then
                 read_address <= axi_initiator.araddr(24 downto 1);
                 read_address_stored <= '1';
+            end if;
+            if (write_complete = '1') then
+                bvalid <= '1';
+                axi_target.bresp <= "00";
+                write_address_stored <= '0';
+                write_data_stored <= '0';
+            end if;
+
+            -- Complete AXI write transaction
+            if (axi_initiator.bready = '1' and bvalid = '1') then
+                bvalid <= '0';
+                axi_target.bresp <= (others => 'U');
             end if;
         end if;
     end process axi_handler;

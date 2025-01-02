@@ -30,22 +30,29 @@ package body test_util is
         axi_initiator.awvalid <= '1';
         axi_initiator.awaddr  <= addr;
         axi_initiator.awprot  <= (others => '0');
+        axi_initiator.wvalid  <= '1';
+        axi_initiator.wdata   <= data;
         if (axi_target.awready /= '1') then
             wait until axi_target.awready = '1' for timeout;
             assert axi_target.awready = '1' report "AXI awready not ready" severity failure;
         end if;
-        wait until rising_edge(clk);
-
-        axi_initiator.wvalid  <= '1';
-        axi_initiator.wdata   <= data;
         if (axi_target.wready /= '1') then
             wait until axi_target.wready = '1' for timeout;
             assert axi_target.wready = '1' report "AXI wready not ready" severity failure;
         end if;
         wait until rising_edge(clk);
+        axi_initiator.awvalid <= '0';
+        axi_initiator.wvalid  <= '0';
 
+        axi_initiator.bready <= '1';
         -- This will always take at least one cycle
         wait until axi_target.bvalid = '1' for timeout;
         assert axi_target.bvalid = '1' report "AXI bvalid not valid" severity failure;
+        wait until rising_edge(clk);
+        axi_initiator.bready <= '0';
+
+        -- Wait for valid to disappear
+        wait until axi_target.bvalid = '0' for timeout;
+        assert axi_target.bvalid = '0' report "AXI bvalid still valid" severity failure;
     end procedure axi_write_word;
 end package body test_util;
