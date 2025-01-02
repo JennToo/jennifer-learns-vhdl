@@ -72,6 +72,7 @@ architecture behav of sim_sdram is
         -- state_self_refresh,
         state_auto_refresh,
         -- state_powerdown,
+        state_row_active_wait,
         state_row_active
         -- state_active_powerdown,
         -- state_read,
@@ -96,6 +97,10 @@ architecture behav of sim_sdram is
 
     signal memory                  : memory_array;
     signal cas_latency             : std_logic_vector(2 downto 0);
+    signal active_row              : std_logic_vector(12 downto 0);
+    -- Technically you can activate rows in multiple banks at once. But we
+    -- don't support that in the simulation yet.
+    signal active_bank             : std_logic_vector(1 downto 0);
 
     signal power_on_time           : time            := 0 ns;
     signal powerup_state           : powerup_state_t := powerup_want_wait;
@@ -188,6 +193,7 @@ begin
     state_machine: process(clk, arst_model)
         variable command : command_t;
         variable new_state : state_t;
+        variable full_write_address : std_logic_vector(23 downto 0);
     begin
         if (arst_model = '0') then
             state <= state_poweron;
@@ -195,6 +201,8 @@ begin
             cas_latency <= "UUU";
             seen_periodic_refreshes <= 0;
             last_full_refresh_time <= now;
+            active_row <= "UUUUUUUUUUUUU";
+            active_bank <= "UU";
         elsif (rising_edge(clk) and cke = '1') then
             command := get_command(cs_l, ras_l, cas_l, we_l);
             new_state := state;
@@ -226,6 +234,11 @@ begin
                 when state_mode_reg =>
                     if (now - last_transition_time >= t_mrd) then
                         new_state := state_idle;
+                        last_transition_time <= now;
+                    end if;
+                when state_row_active_wait =>
+                    if (now - last_transition_time >= t_rcd) then
+                        new_state := state_row_active;
                         last_transition_time <= now;
                     end if;
                 when others =>
@@ -270,6 +283,14 @@ begin
                                 report "invalid command while in LMR state"
                                 severity error;
                     end case;
+                when state_row_active_wait =>
+                    case (command) is
+                        when command_nop =>
+                        when others =>
+                            assert false
+                                report "invalid command while in row_active_wait state"
+                                severity error;
+                    end case;
                 when state_idle =>
                     case (command) is
                         when command_load_mode_reg =>
@@ -293,12 +314,29 @@ begin
                             new_state := state_auto_refresh;
                             last_transition_time <= now;
                         when command_active =>
-                            new_state := state_row_active;
+                            new_state := state_row_active_wait;
                             last_transition_time <= now;
+                            active_row <= a;
+                            active_bank <= ba;
                         when command_nop =>
                             -- Don't care
                         when others =>
                             assert false report "invalid command while in idle state" severity error;
+                    end case;
+                when state_row_active =>
+                    case (command) is
+                        when command_read =>
+                            assert false report "unimplemented command" severity error;
+                        when command_write =>
+                            full_write_address := active_bank & active_row & a(8 downto 0);
+                        when command_precharge =>
+                            -- TODO: do we need to validate some timing here?
+                            new_state := state_precharge;
+                            last_transition_time <= now;
+                        when command_nop =>
+                            -- Don't care
+                        when others =>
+                            assert false report "invalid command while in row_active state" severity error;
                     end case;
                 when others =>
                     assert false report "state not implemented" severity error;

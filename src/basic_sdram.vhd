@@ -13,7 +13,9 @@ entity basic_sdram is
         total_powerup_refreshes : integer := 8;
         t_rp                    : time    := 20 ns;
         t_mrd                   : time    := 15 ns;
-        t_rc                    : time    := 67.5 ns
+        t_rc                    : time    := 67.5 ns;
+        t_rcd                   : time    := 20 ns;
+        t_dpl                   : time    := 14 ns
     );
     port(
         clk  : in std_logic;
@@ -46,6 +48,8 @@ architecture behave of basic_sdram is
     constant t_rp_cycles          : integer := period_to_cycles(t_rp, clk_period);
     constant t_rc_cycles          : integer := period_to_cycles(t_rc, clk_period);
     constant t_mrd_cycles         : integer := period_to_cycles(t_mrd, clk_period);
+    constant t_rcd_cycles         : integer := period_to_cycles(t_rcd, clk_period);
+    constant t_dpl_cycles         : integer := period_to_cycles(t_dpl, clk_period);
     constant refresh_count_width  : integer := clog2(total_powerup_refreshes);
 
     type state_t is (
@@ -114,6 +118,11 @@ architecture behave of basic_sdram is
                 command_bits.ras_l <= '0';
                 command_bits.cas_l <= '1';
                 command_bits.we_l  <= '1';
+            when sdram_write =>
+                command_bits.cs_l  <= '0';
+                command_bits.ras_l <= '1';
+                command_bits.cas_l <= '0';
+                command_bits.we_l  <= '0';
             when others =>
                 assert false report "Unimplemented command" severity failure;
         end case;
@@ -226,8 +235,21 @@ begin
                             a <= write_address(21 downto 9);
                             send_command(sdram_active, command_bits_hookup);
                             internal_state.state <= state_activate;
+                            internal_state.cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
                         else
                             send_command(sdram_nop, command_bits_hookup);
+                        end if;
+                    when state_activate =>
+                        if (write_address_stored = '1' and write_data_stored = '1') then
+                            ba <= write_address(23 downto 22);
+                            a(9 downto 0) <= write_address(9 downto 0);
+                            a(10) <= '1'; -- auto-precharge
+                            -- TODO: dqm
+                            dq_o <= write_data;
+                            dq_oe <= '1';
+                            send_command(sdram_write, command_bits_hookup);
+                            internal_state.state <= state_execute_write;
+                            internal_state.cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
                         end if;
                     when others =>
                         assert false report "Unimplemented state" severity failure;
@@ -259,7 +281,7 @@ begin
                 write_data_stored <= '1';
             end if;
             if (axi_initiator.arvalid = '1') then
-                read_address <= axi_initiator.araddr;
+                read_address <= axi_initiator.araddr(24 downto 1);
                 read_address_stored <= '1';
             end if;
         end if;
