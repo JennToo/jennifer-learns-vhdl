@@ -22,8 +22,7 @@ architecture behav of tb_sdram is
     signal cas_l : std_logic;
     signal ras_l : std_logic;
     signal we_l  : std_logic;
-    signal dqml  : std_logic;
-    signal dqmh  : std_logic;
+    signal dqm   : std_logic_vector(1 downto 0);
     signal ba    : std_logic_vector(1  downto 0);
     signal a     : std_logic_vector(12 downto 0);
     signal dq    : std_logic_vector(15 downto 0);
@@ -42,8 +41,7 @@ begin
         cas_l      => cas_l,
         ras_l      => ras_l,
         we_l       => we_l,
-        dqml       => dqml,
-        dqmh       => dqmh,
+        dqm        => dqm,
         ba         => ba,
         a          => a,
         dq         => dq,
@@ -65,8 +63,7 @@ begin
         cas_l         => cas_l,
         ras_l         => ras_l,
         we_l          => we_l,
-        dqml          => dqml,
-        dqmh          => dqmh,
+        dqm           => dqm,
         ba            => ba,
         a             => a,
         dq_o          => dq,

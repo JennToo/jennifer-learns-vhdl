@@ -40,8 +40,7 @@ entity sim_sdram is
         cas_l : in    std_logic;
         ras_l : in    std_logic;
         we_l  : in    std_logic;
-        dqml  : in    std_logic;
-        dqmh  : in    std_logic;
+        dqm   : in    std_logic_vector(1 downto 0);
         ba    : in    std_logic_vector(1 downto 0);
         a     : in    std_logic_vector(12 downto 0);
         dq    : inout std_logic_vector(15 downto 0);

@@ -30,8 +30,7 @@ entity basic_sdram is
         cas_l : out std_logic;
         ras_l : out std_logic;
         we_l  : out std_logic;
-        dqml  : out std_logic;
-        dqmh  : out std_logic;
+        dqm   : out std_logic_vector(1 downto 0);
         ba    : out std_logic_vector(1 downto 0);
         a     : out std_logic_vector(12 downto 0);
         dq_o  : out std_logic_vector(15 downto 0);
@@ -179,9 +178,10 @@ begin
             if internal_state.cycles_countdown /= 0 then
                 internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
                 a <= (others => 'U');
-                ba <= "UU";
+                ba <= (others => 'U');
                 dq_oe <= '0';
                 dq_o <= (others => 'Z');
+                dqm <= (others => 'U');
 
                 send_command(sdram_nop, command_bits_hookup);
             else
@@ -250,7 +250,7 @@ begin
                             a(9 downto 0) <= write_address(9 downto 0);
                             a(10) <= '1'; -- auto-precharge
                             a(12 downto 11) <= "UU";
-                            -- TODO: dqm
+                            dqm <= write_strobe;
                             dq_o <= write_data;
                             dq_oe <= '1';
                             send_command(sdram_write, command_bits_hookup);

@@ -25,14 +25,11 @@ architecture rtl of toplevel is
     signal dq_o : std_logic_vector(15 downto 0);
     signal dq_i : std_logic_vector(15 downto 0);
     signal dq_oe : std_logic;
-    signal dqml : std_logic;
-    signal dqmh : std_logic;
     signal clk : std_logic;
 begin
 
     clk <= clk_25mhz;
     sdram_d <= dq_o when dq_oe = '1' else (others => 'Z');
-    sdram_dqm <= dqml & dqmh;
 
     basic_sdram_0: entity work.basic_sdram
     generic map(
@@ -49,8 +46,7 @@ begin
         cas_l         => sdram_casn,
         ras_l         => sdram_rasn,
         we_l          => sdram_wen,
-        dqml          => dqml,
-        dqmh          => dqmh,
+        dqm           => sdram_dqm,
         ba            => sdram_ba,
         a             => sdram_a,
         dq_o          => dq_o,
