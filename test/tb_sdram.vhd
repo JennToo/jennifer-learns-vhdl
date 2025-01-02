@@ -25,7 +25,9 @@ architecture behav of tb_sdram is
     signal dqm  : std_logic_vector(1 downto 0);
     signal ba   : std_logic_vector(1  downto 0);
     signal a    : std_logic_vector(12 downto 0);
-    signal dq   : std_logic_vector(15 downto 0);
+    signal dq_i   : std_logic_vector(15 downto 0);
+    signal dq_o   : std_logic_vector(15 downto 0);
+    signal dq_oe : std_logic;
     signal arst : std_logic;
 
     signal stop : boolean := false;
@@ -44,7 +46,8 @@ begin
         dqm        => dqm,
         ba         => ba,
         a          => a,
-        dq         => dq,
+        dq_i       => dq_o,
+        dq_o       => dq_i,
         arst_model => arst
     );
 
@@ -66,9 +69,9 @@ begin
         dqm           => dqm,
         ba            => ba,
         a             => a,
-        dq_o          => dq,
-        dq_i          => dq,
-        dq_oe         => open
+        dq_o          => dq_o,
+        dq_i          => dq_i,
+        dq_oe         => dq_oe
     );
 
     clocker: process begin
@@ -81,7 +84,10 @@ begin
         wait;
     end process clocker;
 
-    stimulus: process begin
+    stimulus: process
+        variable got_data : std_logic_vector(15 downto 0);
+        variable expected_data : std_logic_vector(15 downto 0) := std_logic_vector(to_unsigned(42, 16));
+    begin
         arst <= '0';
         wait for 1 ns;
         arst <= '1';
@@ -91,12 +97,21 @@ begin
 
         axi_write_word(
             (others => '0'),
-            std_logic_vector(to_unsigned(42, 16)),
+            expected_data,
             CLK_PERIOD * 20,
             clk,
             axi_initiator,
             axi_target
         );
+        axi_read_word(
+            (others => '0'),
+            CLK_PERIOD * 20,
+            clk,
+            axi_initiator,
+            axi_target,
+            got_data
+        );
+        assert got_data = expected_data report "Data mismatch" severity failure;
 
         wait for CLK_PERIOD * 100;
         stop <= true;

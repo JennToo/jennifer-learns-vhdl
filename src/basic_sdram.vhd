@@ -49,6 +49,7 @@ architecture behave of basic_sdram is
     constant t_mrd_cycles         : integer := period_to_cycles(t_mrd, clk_period);
     constant t_rcd_cycles         : integer := period_to_cycles(t_rcd, clk_period);
     constant t_dpl_cycles         : integer := period_to_cycles(t_dpl, clk_period);
+    constant cas_latency          : integer := 2;
     constant refresh_count_width  : integer := clog2(total_powerup_refreshes);
 
     type state_t is (
@@ -59,7 +60,7 @@ architecture behave of basic_sdram is
         state_idle,
         state_refresh,
         state_activate,
-        state_execute_write
+        state_execute_read
     );
 
     type command_bits_t is record
@@ -81,12 +82,15 @@ architecture behave of basic_sdram is
     signal read_address         : std_logic_vector(23 downto 0);
     signal write_address        : std_logic_vector(23 downto 0);
     signal write_data           : std_logic_vector(15 downto 0);
+    signal read_data            : std_logic_vector(15 downto 0);
     signal write_strobe         : std_logic_vector(1 downto 0);
     signal read_address_stored  : std_logic;
     signal write_address_stored : std_logic;
     signal write_data_stored    : std_logic;
     signal write_complete       : std_logic;
+    signal read_complete        : std_logic;
     signal bvalid               : std_logic;
+    signal rvalid               : std_logic;
 
     procedure send_command(
         constant command    : in sdram_command_t;
@@ -124,6 +128,11 @@ architecture behave of basic_sdram is
                 command_bits.rasn <= '1';
                 command_bits.casn <= '0';
                 command_bits.wen  <= '0';
+            when sdram_read =>
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '1';
+                command_bits.casn <= '0';
+                command_bits.wen  <= '1';
             when others =>
                 assert false report "Unimplemented command" severity failure;
         end case;
@@ -177,8 +186,10 @@ begin
             send_command(sdram_nop, command_bits_hookup);
             internal_state.state <= state_powerup_wait;
             write_complete <= '0';
+            read_complete <= '0';
         elsif rising_edge(clk) then
             write_complete <= '0';
+            read_complete <= '0';
             if internal_state.cycles_countdown /= 0 then
                 internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
                 a     <= (others => 'U');
@@ -245,6 +256,12 @@ begin
                             send_command(sdram_active, command_bits_hookup);
                             internal_state.state <= state_activate;
                             internal_state.cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
+                        elsif (read_address_stored = '1') then
+                            ba <= read_address(23 downto 22);
+                            a <= read_address(21 downto 9);
+                            send_command(sdram_active, command_bits_hookup);
+                            internal_state.state <= state_activate;
+                            internal_state.cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
                         else
                             send_command(sdram_nop, command_bits_hookup);
                         end if;
@@ -258,10 +275,32 @@ begin
                             dq_o <= write_data;
                             dq_oe <= '1';
                             send_command(sdram_write, command_bits_hookup);
-                            -- TODO: need to remember that we were waiting, to send response
                             internal_state.state <= state_idle;
                             internal_state.cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
                             write_complete <= '1';
+                        elsif (read_address_stored = '1') then
+                            ba <= read_address(23 downto 22);
+                            a(9 downto 0) <= read_address(9 downto 0);
+                            a(10) <= '1'; -- auto-precharge
+                            a(12 downto 11) <= "UU";
+                            send_command(sdram_read, command_bits_hookup);
+                            internal_state.state <= state_execute_read;
+                            internal_state.cycles_countdown <= to_unsigned(cas_latency, powerup_cycles_width);
+                        else
+                            send_command(sdram_nop, command_bits_hookup);
+                        end if;
+                    when state_execute_read =>
+                        send_command(sdram_nop, command_bits_hookup);
+                        internal_state.state <= state_idle;
+                        read_data <= dq_i;
+                        read_complete <= '1';
+                        -- TODO: Verify, is that timing right? Seems to be
+                        if (t_rp_cycles > cas_latency) then
+                            send_command(sdram_nop, command_bits_hookup);
+                            internal_state.cycles_countdown <= to_unsigned(t_rp_cycles - cas_latency, powerup_cycles_width);
+                        else
+                            -- TODO: We could handle some commands right now
+                            send_command(sdram_nop, command_bits_hookup);
                         end if;
                     when others =>
                         assert false report "Unimplemented state" severity failure;
@@ -274,6 +313,7 @@ begin
     axi_target.wready  <= not write_data_stored;
     axi_target.arready <= not read_address_stored;
     axi_target.bvalid  <= bvalid;
+    axi_target.rvalid  <= rvalid;
 
     axi_handler: process(clk, arst) is
     begin
@@ -303,11 +343,26 @@ begin
                 write_address_stored <= '0';
                 write_data_stored <= '0';
             end if;
+            if (read_complete = '1') then
+                rvalid <= '1';
+                axi_target.rdata <= read_data;
+                axi_target.rresp <= "00";
+                read_address_stored <= '0';
+            end if;
 
             -- Complete AXI write transaction
             if (axi_initiator.bready = '1' and bvalid = '1') then
+                -- TODO: Should we send this earlier? Once the write is in the
+                -- pipeline we could just let the initiator move on early, there is no
+                -- failure condition for our writes
                 bvalid <= '0';
                 axi_target.bresp <= (others => 'U');
+            end if;
+
+            if (axi_initiator.rready = '1' and rvalid = '1') then
+                rvalid <= '0';
+                axi_target.rdata <= (others => 'U');
+                axi_target.rresp <= (others => 'U');
             end if;
         end if;
     end process axi_handler;

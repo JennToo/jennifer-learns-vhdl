@@ -43,7 +43,8 @@ entity sim_sdram is
         dqm  : in    std_logic_vector(1 downto 0);
         ba   : in    std_logic_vector(1 downto 0);
         a    : in    std_logic_vector(12 downto 0);
-        dq   : inout std_logic_vector(15 downto 0);
+        dq_i : in    std_logic_vector(15 downto 0);
+        dq_o : out   std_logic_vector(15 downto 0);
 
         -- The real chip doesn't have a reset, but it can be useful to reset
         -- the model to simulate power-up
@@ -72,13 +73,13 @@ architecture behav of sim_sdram is
         state_auto_refresh,
         -- state_powerdown,
         state_row_active_wait,
-        state_row_active
+        state_row_active,
         -- state_active_powerdown,
         -- state_read,
         -- state_read_suspend,
         -- state_write,
         -- state_write_suspend,
-        -- state_reada,
+        state_reada
         -- state_reada_suspend,
         -- state_writea,
         -- state_writea_suspend
@@ -100,6 +101,7 @@ architecture behav of sim_sdram is
     -- Technically you can activate rows in multiple banks at once. But we
     -- don't support that in the simulation yet.
     signal active_bank : std_logic_vector(1 downto 0);
+    signal active_column : std_logic_vector(8 downto 0);
 
     signal power_on_time           : time            := 0 ns;
     signal powerup_state           : powerup_state_t := powerup_want_wait;
@@ -108,6 +110,7 @@ architecture behav of sim_sdram is
     signal seen_startup_refreshes  : integer         := 0;
     signal seen_periodic_refreshes : integer         := 0;
     signal last_full_refresh_time  : time            := 0 ns;
+    signal cas_waits               : integer         := 0;
 
     function get_command(
         f_csn  : in std_logic;
@@ -151,7 +154,7 @@ begin
             powerup_state <= powerup_want_wait;
             seen_startup_refreshes <= 0;
             for word in 0 to word_count loop
-                memory(word) <= "UUUUUUUUUUUUUUUU";
+                memory(word) <= (others => 'U');
             end loop;
         elsif (rising_edge(clk) and cke = '1') then
             command := get_command(csn, rasn, casn, wen);
@@ -192,7 +195,7 @@ begin
     state_machine: process(clk, arst_model)
         variable command : command_t;
         variable new_state : state_t;
-        variable full_write_address : std_logic_vector(23 downto 0);
+        variable full_address : std_logic_vector(23 downto 0);
     begin
         if (arst_model = '0') then
             state <= state_poweron;
@@ -325,13 +328,19 @@ begin
                 when state_row_active =>
                     case (command) is
                         when command_read =>
-                            assert false report "unimplemented command" severity error;
+                            assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
+                            active_column <= a(8 downto 0);
+                            new_state := state_reada;
+                            last_transition_time <= now;
+                            cas_waits <= to_integer(unsigned(cas_latency));
                         when command_write =>
-                            full_write_address := active_bank & active_row & a(8 downto 0);
+                            full_address := active_bank & active_row & a(8 downto 0);
                             assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
                             -- TODO: dqm
-                            memory(to_integer(unsigned(full_write_address))) <= dq;
-                            -- TODO: state transition
+                            memory(to_integer(unsigned(full_address))) <= dq_i;
+                            -- TODO: we need to validate t_dpl first
+                            new_state := state_precharge;
+                            last_transition_time <= now;
                         when command_precharge =>
                             -- TODO: do we need to validate some timing here?
                             new_state := state_precharge;
@@ -341,6 +350,18 @@ begin
                         when others =>
                             assert false report "invalid command while in row_active state" severity error;
                     end case;
+                when state_reada =>
+                    if (cas_waits = 0 ) then
+                        full_address := active_bank & active_row & active_column;
+                        dq_o <= memory(to_integer(unsigned(full_address)));
+                        -- TODO: we won't always go to idle, depends on CAS vs t_rp durations
+                        new_state := state_idle;
+                        last_transition_time <= now;
+                    else
+                        -- Technically other commands can be interleaved, but we don't support it
+                        assert command = command_nop report "waiting for CAS latency" severity error;
+                        cas_waits <= cas_waits - 1;
+                    end if;
                 when others =>
                     assert false report "state not implemented" severity error;
             end case;
