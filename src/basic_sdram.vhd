@@ -178,6 +178,11 @@ begin
         elsif rising_edge(clk) then
             if internal_state.cycles_countdown /= 0 then
                 internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
+                a <= (others => 'U');
+                ba <= "UU";
+                dq_oe <= '0';
+                dq_o <= (others => 'Z');
+
                 send_command(sdram_nop, command_bits_hookup);
             else
                 -- Finished waiting
@@ -244,11 +249,13 @@ begin
                             ba <= write_address(23 downto 22);
                             a(9 downto 0) <= write_address(9 downto 0);
                             a(10) <= '1'; -- auto-precharge
+                            a(12 downto 11) <= "UU";
                             -- TODO: dqm
                             dq_o <= write_data;
                             dq_oe <= '1';
                             send_command(sdram_write, command_bits_hookup);
-                            internal_state.state <= state_execute_write;
+                            -- TODO: need to remember that we were waiting, to send response
+                            internal_state.state <= state_idle;
                             internal_state.cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
                         end if;
                     when others =>

@@ -329,6 +329,10 @@ begin
                             assert false report "unimplemented command" severity error;
                         when command_write =>
                             full_write_address := active_bank & active_row & a(8 downto 0);
+                            assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
+                            -- TODO: dqm
+                            memory(to_integer(unsigned(full_write_address))) <= dq;
+                            -- TODO: state transition
                         when command_precharge =>
                             -- TODO: do we need to validate some timing here?
                             new_state := state_precharge;
