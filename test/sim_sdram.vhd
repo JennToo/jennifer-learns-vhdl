@@ -34,16 +34,16 @@ entity sim_sdram is
     );
 
     port(
-        clk   : in    std_logic;
-        cke   : in    std_logic;
-        cs_l  : in    std_logic;
-        cas_l : in    std_logic;
-        ras_l : in    std_logic;
-        we_l  : in    std_logic;
-        dqm   : in    std_logic_vector(1 downto 0);
-        ba    : in    std_logic_vector(1 downto 0);
-        a     : in    std_logic_vector(12 downto 0);
-        dq    : inout std_logic_vector(15 downto 0);
+        clk  : in    std_logic;
+        cke  : in    std_logic;
+        csn  : in    std_logic;
+        casn : in    std_logic;
+        rasn : in    std_logic;
+        wen  : in    std_logic;
+        dqm  : in    std_logic_vector(1 downto 0);
+        ba   : in    std_logic_vector(1 downto 0);
+        a    : in    std_logic_vector(12 downto 0);
+        dq   : inout std_logic_vector(15 downto 0);
 
         -- The real chip doesn't have a reset, but it can be useful to reset
         -- the model to simulate power-up
@@ -94,12 +94,12 @@ architecture behav of sim_sdram is
         command_load_mode_reg
     );
 
-    signal memory                  : memory_array;
-    signal cas_latency             : std_logic_vector(2 downto 0);
-    signal active_row              : std_logic_vector(12 downto 0);
+    signal memory      : memory_array;
+    signal cas_latency : std_logic_vector(2 downto 0);
+    signal active_row  : std_logic_vector(12 downto 0);
     -- Technically you can activate rows in multiple banks at once. But we
     -- don't support that in the simulation yet.
-    signal active_bank             : std_logic_vector(1 downto 0);
+    signal active_bank : std_logic_vector(1 downto 0);
 
     signal power_on_time           : time            := 0 ns;
     signal powerup_state           : powerup_state_t := powerup_want_wait;
@@ -110,14 +110,14 @@ architecture behav of sim_sdram is
     signal last_full_refresh_time  : time            := 0 ns;
 
     function get_command(
-        f_cs_l  : in std_logic;
-        f_cas_l : in std_logic;
-        f_ras_l : in std_logic;
-        f_we_l  : in std_logic
+        f_csn  : in std_logic;
+        f_casn : in std_logic;
+        f_rasn : in std_logic;
+        f_wen  : in std_logic
     ) return command_t is
-        variable concat : std_logic_vector(2 downto 0) := f_cas_l & f_ras_l & f_we_l;
+        variable concat : std_logic_vector(2 downto 0) := f_casn & f_rasn & f_wen;
     begin
-        if (f_cs_l = '1') then
+        if (f_csn = '1') then
             return command_nop;
         else
             case concat is
@@ -154,7 +154,7 @@ begin
                 memory(word) <= "UUUUUUUUUUUUUUUU";
             end loop;
         elsif (rising_edge(clk) and cke = '1') then
-            command := get_command(cs_l, ras_l, cas_l, we_l);
+            command := get_command(csn, rasn, casn, wen);
 
             -- Walk through and assert the powerup process
             case (powerup_state) is
@@ -203,7 +203,7 @@ begin
             active_row <= "UUUUUUUUUUUUU";
             active_bank <= "UU";
         elsif (rising_edge(clk) and cke = '1') then
-            command := get_command(cs_l, ras_l, cas_l, we_l);
+            command := get_command(csn, rasn, casn, wen);
             new_state := state;
 
             assert (now - last_full_refresh_time < t_ref)

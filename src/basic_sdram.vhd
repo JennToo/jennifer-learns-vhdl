@@ -26,10 +26,10 @@ entity basic_sdram is
 
         -- Signals to the chip
         cke   : out std_logic;
-        cs_l  : out std_logic;
-        cas_l : out std_logic;
-        ras_l : out std_logic;
-        we_l  : out std_logic;
+        csn   : out std_logic;
+        casn  : out std_logic;
+        rasn  : out std_logic;
+        wen   : out std_logic;
         dqm   : out std_logic_vector(1 downto 0);
         ba    : out std_logic_vector(1 downto 0);
         a     : out std_logic_vector(12 downto 0);
@@ -63,10 +63,10 @@ architecture behave of basic_sdram is
     );
 
     type command_bits_t is record
-        cs_l  : std_logic;
-        cas_l : std_logic;
-        ras_l : std_logic;
-        we_l  : std_logic;
+        csn  : std_logic;
+        casn : std_logic;
+        rasn : std_logic;
+        wen  : std_logic;
     end record;
 
     type internal_state_t is record
@@ -76,15 +76,15 @@ architecture behave of basic_sdram is
         state                       : state_t;
         remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
     end record;
-    signal internal_state      : internal_state_t;
-    signal command_bits_hookup : command_bits_t;
-    signal read_address                : std_logic_vector(23 downto 0);
-    signal write_address               : std_logic_vector(23 downto 0);
-    signal write_data                  : std_logic_vector(15 downto 0);
-    signal write_strobe                : std_logic_vector(1 downto 0);
-    signal read_address_stored         : std_logic;
-    signal write_address_stored        : std_logic;
-    signal write_data_stored           : std_logic;
+    signal internal_state       : internal_state_t;
+    signal command_bits_hookup  : command_bits_t;
+    signal read_address         : std_logic_vector(23 downto 0);
+    signal write_address        : std_logic_vector(23 downto 0);
+    signal write_data           : std_logic_vector(15 downto 0);
+    signal write_strobe         : std_logic_vector(1 downto 0);
+    signal read_address_stored  : std_logic;
+    signal write_address_stored : std_logic;
+    signal write_data_stored    : std_logic;
 
     procedure send_command(
         constant command    : in sdram_command_t;
@@ -93,35 +93,35 @@ architecture behave of basic_sdram is
     begin
         case(command) is
             when sdram_nop =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '1';
-                command_bits.cas_l <= '1';
-                command_bits.we_l  <= '1';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '1';
+                command_bits.casn <= '1';
+                command_bits.wen  <= '1';
             when sdram_precharge =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '0';
-                command_bits.cas_l <= '1';
-                command_bits.we_l  <= '0';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '0';
+                command_bits.casn <= '1';
+                command_bits.wen  <= '0';
             when sdram_refresh =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '0';
-                command_bits.cas_l <= '0';
-                command_bits.we_l  <= '1';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '0';
+                command_bits.casn <= '0';
+                command_bits.wen  <= '1';
             when sdram_load_mode_reg =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '0';
-                command_bits.cas_l <= '0';
-                command_bits.we_l  <= '0';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '0';
+                command_bits.casn <= '0';
+                command_bits.wen  <= '0';
             when sdram_active =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '0';
-                command_bits.cas_l <= '1';
-                command_bits.we_l  <= '1';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '0';
+                command_bits.casn <= '1';
+                command_bits.wen  <= '1';
             when sdram_write =>
-                command_bits.cs_l  <= '0';
-                command_bits.ras_l <= '1';
-                command_bits.cas_l <= '0';
-                command_bits.we_l  <= '0';
+                command_bits.csn  <= '0';
+                command_bits.rasn <= '1';
+                command_bits.casn <= '0';
+                command_bits.wen  <= '0';
             when others =>
                 assert false report "Unimplemented command" severity failure;
         end case;
@@ -162,11 +162,11 @@ architecture behave of basic_sdram is
     end procedure transition_to_state;
 begin
 
-    cke   <= '1';
-    cs_l  <= command_bits_hookup.cs_l;
-    cas_l <= command_bits_hookup.cas_l;
-    ras_l <= command_bits_hookup.ras_l;
-    we_l  <= command_bits_hookup.we_l;
+    cke  <= '1';
+    csn  <= command_bits_hookup.csn;
+    casn <= command_bits_hookup.casn;
+    rasn <= command_bits_hookup.rasn;
+    wen  <= command_bits_hookup.wen;
 
     commands: process(clk, arst) is
     begin
@@ -177,11 +177,11 @@ begin
         elsif rising_edge(clk) then
             if internal_state.cycles_countdown /= 0 then
                 internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
-                a <= (others => 'U');
-                ba <= (others => 'U');
+                a     <= (others => 'U');
+                ba    <= (others => 'U');
                 dq_oe <= '0';
-                dq_o <= (others => 'Z');
-                dqm <= (others => 'U');
+                dq_o  <= (others => 'Z');
+                dqm   <= (others => 'U');
 
                 send_command(sdram_nop, command_bits_hookup);
             else

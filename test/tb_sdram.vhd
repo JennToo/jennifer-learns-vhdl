@@ -16,17 +16,17 @@ architecture behav of tb_sdram is
     signal axi_initiator : axi4l_initiator_signals_t;
     signal axi_target    : axi4l_target_signals_t;
 
-    signal clk   : std_logic;
-    signal cke   : std_logic;
-    signal cs_l  : std_logic;
-    signal cas_l : std_logic;
-    signal ras_l : std_logic;
-    signal we_l  : std_logic;
-    signal dqm   : std_logic_vector(1 downto 0);
-    signal ba    : std_logic_vector(1  downto 0);
-    signal a     : std_logic_vector(12 downto 0);
-    signal dq    : std_logic_vector(15 downto 0);
-    signal arst  : std_logic;
+    signal clk  : std_logic;
+    signal cke  : std_logic;
+    signal csn  : std_logic;
+    signal casn : std_logic;
+    signal rasn : std_logic;
+    signal wen  : std_logic;
+    signal dqm  : std_logic_vector(1 downto 0);
+    signal ba   : std_logic_vector(1  downto 0);
+    signal a    : std_logic_vector(12 downto 0);
+    signal dq   : std_logic_vector(15 downto 0);
+    signal arst : std_logic;
 
     signal stop : boolean := false;
 begin
@@ -37,10 +37,10 @@ begin
     port map (
         clk        => clk,
         cke        => cke,
-        cs_l       => cs_l,
-        cas_l      => cas_l,
-        ras_l      => ras_l,
-        we_l       => we_l,
+        csn        => csn,
+        casn       => casn,
+        rasn       => rasn,
+        wen        => wen,
         dqm        => dqm,
         ba         => ba,
         a          => a,
@@ -50,7 +50,7 @@ begin
 
     basic_sdram_0: entity work.basic_sdram
     generic map(
-        clk_period => CLK_PERIOD,
+        clk_period             => CLK_PERIOD,
         required_power_on_wait => powerup_time
     )
     port map (
@@ -59,10 +59,10 @@ begin
         axi_initiator => axi_initiator,
         axi_target    => axi_target,
         cke           => cke,
-        cs_l          => cs_l,
-        cas_l         => cas_l,
-        ras_l         => ras_l,
-        we_l          => we_l,
+        csn           => csn,
+        casn          => casn,
+        rasn          => rasn,
+        wen           => wen,
         dqm           => dqm,
         ba            => ba,
         a             => a,
