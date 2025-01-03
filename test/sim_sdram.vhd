@@ -318,8 +318,6 @@ begin
                         assert command = sdram_nop report "waiting for CAS latency" severity error;
                         cas_waits <= cas_waits - 1;
                     end if;
-                when others =>
-                    assert false report "state not implemented" severity error;
             end case;
 
             state <= new_state;

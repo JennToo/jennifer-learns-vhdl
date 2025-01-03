@@ -53,7 +53,7 @@ architecture behave of basic_sdram is
     constant t_dpl_cycles         : integer := period_to_cycles(t_dpl, clk_period, true);
     constant cas_latency          : integer := 2;
     constant refresh_count_width  : integer := clog2(total_powerup_refreshes);
-    constant refresh_timer_cycles : integer := period_to_cycles(t_ref, clk_period, false) / periodic_refresh_count - t_mrd_cycles;
+    constant refresh_timer_cycles : integer := period_to_cycles(t_ref, clk_period, false) / periodic_refresh_count - t_rc_cycles;
     constant refresh_timer_width  : integer := clog2(refresh_timer_cycles);
 
     type state_t is (
@@ -62,7 +62,6 @@ architecture behave of basic_sdram is
         state_powerup_refresh,
         state_powerup_mode_register,
         state_idle,
-        state_refresh,
         state_activate,
         state_execute_read
     );
@@ -153,7 +152,7 @@ begin
                     when state_idle =>
                         if (required_periodic_refresh /= 0) then
                             command <= sdram_refresh;
-                            transition_timer <= to_unsigned(t_mrd_cycles, timer_width);
+                            transition_timer <= to_unsigned(t_rc_cycles, timer_width);
                             required_periodic_refresh <= required_periodic_refresh - 1;
                         -- Technically we could wait for just the address, but
                         -- then we risk getting stuck in ACTIVATE until the
@@ -211,8 +210,6 @@ begin
                             -- TODO: We could handle some commands right now
                             command <= sdram_nop;
                         end if;
-                    when others =>
-                        assert false report "Unimplemented state" severity failure;
                 end case;
             end if;
         end if;

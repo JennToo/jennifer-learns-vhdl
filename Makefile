@@ -39,8 +39,9 @@ endef
 
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx,src/spi_rx.vhd test/tb_spi_rx.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_sdram,src/util.vhd test/test_util.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram.vhd))
+$(eval $(call DEFINE_SIMULATION,tb_sdram_memtester,src/util.vhd src/memtester.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram_memtester.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_util,src/util.vhd test/tb_util.vhd))
-$(eval $(call DEFINE_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd synth/ulx3s/sdram_test/toplevel.vhd))
+$(eval $(call DEFINE_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd src/memtester.vhd synth/ulx3s/sdram_test/toplevel.vhd))
 
 clean:
 	rm -rf build
