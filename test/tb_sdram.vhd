@@ -13,6 +13,9 @@ architecture behav of tb_sdram is
     -- Most real RAM has a much larger powerup time. But that makes the
     -- simulation waveforms harder to read.
     constant powerup_time : time := 50 * CLK_PERIOD;
+    -- Avoid spamming the sim waveform with as many refreshes as a real chip needs
+    constant t_ref : time := 1 ms;
+    constant periodic_refresh_count : integer := 10;
 
     signal axi_initiator : axi4l_initiator_signals_t;
     signal axi_target    : axi4l_target_signals_t;
@@ -35,7 +38,9 @@ architecture behav of tb_sdram is
 begin
     sim_sdram_0: entity work.sim_sdram
     generic map(
-        required_power_on_wait => powerup_time
+        required_power_on_wait => powerup_time,
+        t_ref => t_ref,
+        periodic_refresh_count => periodic_refresh_count
     )
     port map (
         clk        => clk,
@@ -55,7 +60,9 @@ begin
     basic_sdram_0: entity work.basic_sdram
     generic map(
         clk_period             => CLK_PERIOD,
-        required_power_on_wait => powerup_time
+        required_power_on_wait => powerup_time,
+        t_ref => t_ref,
+        periodic_refresh_count => periodic_refresh_count
     )
     port map (
         clk           => clk,
@@ -116,7 +123,7 @@ begin
             report "Data mismatch, got " & to_string(got_data)
             severity failure;
 
-        wait for CLK_PERIOD * 100;
+        wait for t_ref * 5;
         stop <= true;
         wait;
     end process stimulus;

@@ -3,7 +3,7 @@ library ieee;
    use ieee.math_real.all;
 
 package util is
-    function period_to_cycles(period: time; clk_period: time)
+    function period_to_cycles(period: time; clk_period: time; round_up: boolean)
         return integer;
     function clog2(n: integer)
         return integer;
@@ -46,10 +46,14 @@ package util is
 end package util;
 
 package body util is
-    function period_to_cycles(period: time; clk_period: time)
+    function period_to_cycles(period: time; clk_period: time; round_up: boolean)
         return integer is
     begin
-        return integer(ceil(real(period / 1 ps) / real(clk_period / 1 ps)));
+        if (round_up) then
+            return integer(ceil(real(period / 1 ps) / real(clk_period / 1 ps)));
+        else
+            return integer(floor(real(period / 1 ps) / real(clk_period / 1 ps)));
+        end if;
     end function period_to_cycles;
 
     function clog2(n: integer)

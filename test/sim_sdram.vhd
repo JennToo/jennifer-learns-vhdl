@@ -104,7 +104,6 @@ architecture behav of sim_sdram is
     signal last_full_refresh_time  : time            := 0 ns;
     signal cas_waits               : integer         := 0;
     signal command                 : sdram_command_t;
-
 begin
     powerup: process(clk, arst_model)
     begin
