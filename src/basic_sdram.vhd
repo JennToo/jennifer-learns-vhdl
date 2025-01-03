@@ -84,41 +84,6 @@ architecture behave of basic_sdram is
     signal read_complete        : std_logic;
     signal bvalid               : std_logic;
     signal rvalid               : std_logic;
-
-
-    procedure transition_to_state(
-        constant next_state                : in state_t;
-        constant total_powerup_refreshes_n : in integer;
-
-        signal internal_state_n : out internal_state_t;
-        signal command          : out sdram_command_t;
-        signal ba_n             : out std_logic_vector(1 downto 0);
-        signal a_n              : out std_logic_vector(12 downto 0)
-    ) is
-    begin
-        case(next_state) is
-            when state_powerup_precharge =>
-                a_n(10) <= '1';
-                command <= sdram_precharge;
-                internal_state_n.cycles_countdown <= to_unsigned(t_rp_cycles, powerup_cycles_width);
-            when state_powerup_refresh =>
-                command <= sdram_refresh;
-                internal_state_n.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
-                internal_state_n.remaining_powerup_refreshes <=
-                    to_unsigned(total_powerup_refreshes_n-1, refresh_count_width);
-            when state_powerup_mode_register =>
-                ba_n <= "00";
-                a_n <= "0000000100000";
-                command <= sdram_load_mode_reg;
-                internal_state_n.cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
-            when state_idle =>
-                command <= sdram_nop;
-                internal_state_n.cycles_countdown <= to_unsigned(0, powerup_cycles_width);
-            when others =>
-                assert false report "Unimplemented state transition" severity failure;
-        end case;
-        internal_state_n.state <= next_state;
-    end procedure transition_to_state;
 begin
 
     cke  <= '1';
@@ -141,39 +106,29 @@ begin
                 dq_oe <= '0';
                 dq_o  <= (others => 'U');
                 dqm   <= (others => 'U');
-
                 command <= sdram_nop;
             else
+                command <= sdram_nop;
                 -- Finished waiting
                 case(internal_state.state) is
                     when state_powerup_wait =>
-                        transition_to_state(
-                            state_powerup_precharge,
-                            total_powerup_refreshes,
-                            internal_state,
-                            command,
-                            ba,
-                            a
-                        );
+                        a(10) <= '1';
+                        command <= sdram_precharge;
+                        internal_state.cycles_countdown <= to_unsigned(t_rp_cycles, powerup_cycles_width);
+                        internal_state.state <= state_powerup_precharge;
                     when state_powerup_precharge =>
-                        transition_to_state(
-                            state_powerup_refresh,
-                            total_powerup_refreshes,
-                            internal_state,
-                            command,
-                            ba,
-                            a
-                        );
+                        command <= sdram_refresh;
+                        internal_state.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
+                        internal_state.remaining_powerup_refreshes <=
+                            to_unsigned(total_powerup_refreshes-1, refresh_count_width);
+                        internal_state.state <= state_powerup_refresh;
                     when state_powerup_refresh =>
                         if internal_state.remaining_powerup_refreshes = 0 then
-                            transition_to_state(
-                                state_powerup_mode_register,
-                                total_powerup_refreshes,
-                                internal_state,
-                                command,
-                                ba,
-                                a
-                            );
+                            ba <= "00";
+                            a <= "0000000100000";
+                            command <= sdram_load_mode_reg;
+                            internal_state.cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
+                            internal_state.state <= state_powerup_mode_register;
                         else
                             internal_state.remaining_powerup_refreshes <=
                                 internal_state.remaining_powerup_refreshes - 1;
@@ -181,14 +136,8 @@ begin
                             internal_state.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                         end if;
                     when state_powerup_mode_register =>
-                        transition_to_state(
-                            state_idle,
-                            total_powerup_refreshes,
-                            internal_state,
-                            command,
-                            ba,
-                            a
-                        );
+                        internal_state.cycles_countdown <= to_unsigned(0, powerup_cycles_width);
+                        internal_state.state <= state_idle;
                     when state_idle =>
                         -- Technically we could wait for just the address, but
                         -- then we risk getting stuck in ACTIVATE until the
