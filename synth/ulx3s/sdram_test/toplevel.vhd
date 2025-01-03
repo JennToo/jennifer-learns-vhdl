@@ -29,9 +29,19 @@ architecture rtl of toplevel is
     signal clk           : std_logic;
     signal fault         : std_logic;
     signal address       : std_logic_vector(31 downto 0);
+
+    signal clk_100mhz    : std_logic;
+
+    component pll is
+        port (
+            clkin : in std_logic;
+            clkout0 : out std_logic;
+            locked : out std_logic
+        );
+    end component;
 begin
 
-    clk <= clk_25mhz;
+    clk <= clk_100mhz;
     sdram_d <= dq_o when dq_oe = '1' else (others => 'Z');
     sdram_clk <= clk;
     -- TODO: Just make a reset generator
@@ -39,6 +49,12 @@ begin
 
     led(7) <= fault;
     led(6 downto 0) <= address(23 downto 17);
+
+    pll_0: pll
+    port map (
+        clkin => clk_25mhz,
+        clkout0 => clk_100mhz
+    );
 
     basic_sdram_0: entity work.basic_sdram
     generic map(
