@@ -63,27 +63,24 @@ architecture behave of basic_sdram is
         state_execute_read
     );
 
-    type internal_state_t is record
-        -- power-up cycles will always be the longest, by far. We can re-use this
-        -- counter for all states that require waits.
-        cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
-        state                       : state_t;
-        remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
-    end record;
-    signal internal_state       : internal_state_t;
-    signal command              : sdram_command_t;
-    signal read_address         : std_logic_vector(23 downto 0);
-    signal write_address        : std_logic_vector(23 downto 0);
-    signal write_data           : std_logic_vector(15 downto 0);
-    signal read_data            : std_logic_vector(15 downto 0);
-    signal write_strobe         : std_logic_vector(1 downto 0);
-    signal read_address_stored  : std_logic;
-    signal write_address_stored : std_logic;
-    signal write_data_stored    : std_logic;
-    signal write_complete       : std_logic;
-    signal read_complete        : std_logic;
-    signal bvalid               : std_logic;
-    signal rvalid               : std_logic;
+    -- power-up cycles will always be the longest, by far. We can re-use this
+    -- counter for all states that require waits.
+    signal cycles_countdown            : unsigned(powerup_cycles_width - 1 downto 0);
+    signal state                       : state_t;
+    signal remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
+    signal command                     : sdram_command_t;
+    signal read_address                : std_logic_vector(23 downto 0);
+    signal write_address               : std_logic_vector(23 downto 0);
+    signal write_data                  : std_logic_vector(15 downto 0);
+    signal read_data                   : std_logic_vector(15 downto 0);
+    signal write_strobe                : std_logic_vector(1 downto 0);
+    signal read_address_stored         : std_logic;
+    signal write_address_stored        : std_logic;
+    signal write_data_stored           : std_logic;
+    signal write_complete              : std_logic;
+    signal read_complete               : std_logic;
+    signal bvalid                      : std_logic;
+    signal rvalid                      : std_logic;
 begin
 
     cke  <= '1';
@@ -91,53 +88,53 @@ begin
     commands: process(clk, arst) is
     begin
         if (arst = '0') then
-            internal_state.cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
+            cycles_countdown <= to_unsigned(powerup_cycles, powerup_cycles_width);
             command <= sdram_nop;
-            internal_state.state <= state_powerup_wait;
+            state <= state_powerup_wait;
             write_complete <= '0';
             read_complete <= '0';
         elsif rising_edge(clk) then
             write_complete <= '0';
             read_complete <= '0';
-            if internal_state.cycles_countdown /= 0 then
-                internal_state.cycles_countdown <= internal_state.cycles_countdown - 1;
+            command <= sdram_nop;
+
+            if cycles_countdown /= 0 then
+                cycles_countdown <= cycles_countdown - 1;
                 a     <= (others => 'U');
                 ba    <= (others => 'U');
                 dq_oe <= '0';
                 dq_o  <= (others => 'U');
                 dqm   <= (others => 'U');
-                command <= sdram_nop;
             else
-                command <= sdram_nop;
                 -- Finished waiting
-                case(internal_state.state) is
+                case(state) is
                     when state_powerup_wait =>
                         a(10) <= '1';
                         command <= sdram_precharge;
-                        internal_state.cycles_countdown <= to_unsigned(t_rp_cycles, powerup_cycles_width);
-                        internal_state.state <= state_powerup_precharge;
+                        cycles_countdown <= to_unsigned(t_rp_cycles, powerup_cycles_width);
+                        state <= state_powerup_precharge;
                     when state_powerup_precharge =>
                         command <= sdram_refresh;
-                        internal_state.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
-                        internal_state.remaining_powerup_refreshes <=
+                        cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
+                        remaining_powerup_refreshes <=
                             to_unsigned(total_powerup_refreshes-1, refresh_count_width);
-                        internal_state.state <= state_powerup_refresh;
+                        state <= state_powerup_refresh;
                     when state_powerup_refresh =>
-                        if internal_state.remaining_powerup_refreshes = 0 then
+                        if remaining_powerup_refreshes = 0 then
                             ba <= "00";
                             a <= "0000000100000";
                             command <= sdram_load_mode_reg;
-                            internal_state.cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
-                            internal_state.state <= state_powerup_mode_register;
+                            cycles_countdown <= to_unsigned(t_mrd_cycles, powerup_cycles_width);
+                            state <= state_powerup_mode_register;
                         else
-                            internal_state.remaining_powerup_refreshes <=
-                                internal_state.remaining_powerup_refreshes - 1;
+                            remaining_powerup_refreshes <=
+                                remaining_powerup_refreshes - 1;
                             command <= sdram_refresh;
-                            internal_state.cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
+                            cycles_countdown <= to_unsigned(t_rc_cycles, powerup_cycles_width);
                         end if;
                     when state_powerup_mode_register =>
-                        internal_state.cycles_countdown <= to_unsigned(0, powerup_cycles_width);
-                        internal_state.state <= state_idle;
+                        cycles_countdown <= to_unsigned(0, powerup_cycles_width);
+                        state <= state_idle;
                     when state_idle =>
                         -- Technically we could wait for just the address, but
                         -- then we risk getting stuck in ACTIVATE until the
@@ -147,14 +144,14 @@ begin
                             ba <= write_address(23 downto 22);
                             a <= write_address(21 downto 9);
                             command <= sdram_active;
-                            internal_state.state <= state_activate;
-                            internal_state.cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
+                            state <= state_activate;
+                            cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
                         elsif (read_address_stored = '1') then
                             ba <= read_address(23 downto 22);
                             a <= read_address(21 downto 9);
                             command <= sdram_active;
-                            internal_state.state <= state_activate;
-                            internal_state.cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
+                            state <= state_activate;
+                            cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
                         else
                             command <= sdram_nop;
                         end if;
@@ -168,8 +165,8 @@ begin
                             dq_o <= write_data;
                             dq_oe <= '1';
                             command <= sdram_write;
-                            internal_state.state <= state_idle;
-                            internal_state.cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
+                            state <= state_idle;
+                            cycles_countdown <= to_unsigned(t_dpl_cycles + t_rp_cycles, powerup_cycles_width);
                             write_complete <= '1';
                         elsif (read_address_stored = '1') then
                             ba <= read_address(23 downto 22);
@@ -177,20 +174,20 @@ begin
                             a(10) <= '1'; -- auto-precharge
                             a(12 downto 11) <= "UU";
                             command <= sdram_read;
-                            internal_state.state <= state_execute_read;
-                            internal_state.cycles_countdown <= to_unsigned(cas_latency, powerup_cycles_width);
+                            state <= state_execute_read;
+                            cycles_countdown <= to_unsigned(cas_latency, powerup_cycles_width);
                         else
                             command <= sdram_nop;
                         end if;
                     when state_execute_read =>
                         command <= sdram_nop;
-                        internal_state.state <= state_idle;
+                        state <= state_idle;
                         read_data <= dq_i;
                         read_complete <= '1';
                         -- TODO: Verify, is that timing right? Seems to be
                         if (t_rp_cycles > cas_latency) then
                             command <= sdram_nop;
-                            internal_state.cycles_countdown <= to_unsigned(t_rp_cycles - cas_latency, powerup_cycles_width);
+                            cycles_countdown <= to_unsigned(t_rp_cycles - cas_latency, powerup_cycles_width);
                         else
                             -- TODO: We could handle some commands right now
                             command <= sdram_nop;
