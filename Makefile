@@ -6,6 +6,10 @@ define DEFINE_SIMULATION
 simulations: build/work/$(1)/meta-sim-run
 waves-$(1):
 	gtkwave build/work/$(1)/waves.ghw
+ghdl-lint: ghdl-lint-$(1)
+
+ghdl-lint-$(1):
+	ghdl -s --std=08 -Wall $(2)
 
 build/work/$(1)/$(1): $(2) | build/work/$(1)
 	ghdl -s --std=08 --workdir=build/work/$(1) $(2)

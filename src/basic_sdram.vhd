@@ -195,7 +195,7 @@ begin
                 a     <= (others => 'U');
                 ba    <= (others => 'U');
                 dq_oe <= '0';
-                dq_o  <= (others => 'Z');
+                dq_o  <= (others => 'U');
                 dqm   <= (others => 'U');
 
                 send_command(sdram_nop, command_bits_hookup);

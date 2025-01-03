@@ -1,6 +1,7 @@
 library ieee;
    use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
+library work;
    use work.test_util.all;
    use work.util.all;
 
@@ -111,7 +112,9 @@ begin
             axi_target,
             got_data
         );
-        assert got_data = expected_data report "Data mismatch" severity failure;
+        assert got_data = expected_data
+            report "Data mismatch, got " & to_string(got_data)
+            severity failure;
 
         wait for CLK_PERIOD * 100;
         stop <= true;
