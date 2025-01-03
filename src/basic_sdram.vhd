@@ -140,13 +140,13 @@ begin
                         -- then we risk getting stuck in ACTIVATE until the
                         -- initiator gives us the data. Which could cause us to
                         -- miss refreshes.
-                        if (write_address_stored = '1' and write_data_stored = '1') then
+                        if (write_address_stored = '1' and write_data_stored = '1' and write_complete = '0') then
                             ba <= write_address(23 downto 22);
                             a <= write_address(21 downto 9);
                             command <= sdram_active;
                             state <= state_activate;
                             cycles_countdown <= to_unsigned(t_rcd_cycles, powerup_cycles_width);
-                        elsif (read_address_stored = '1') then
+                        elsif (read_address_stored = '1' and read_complete = '0') then
                             ba <= read_address(23 downto 22);
                             a <= read_address(21 downto 9);
                             command <= sdram_active;
@@ -232,12 +232,15 @@ begin
                 axi_target.bresp <= "00";
                 write_address_stored <= '0';
                 write_data_stored <= '0';
+                write_address <= (others => 'U');
+                write_data <= (others => 'U');
             end if;
             if (read_complete = '1') then
                 rvalid <= '1';
                 axi_target.rdata <= read_data;
                 axi_target.rresp <= "00";
                 read_address_stored <= '0';
+                read_address <= (others => 'U');
             end if;
 
             -- Complete AXI write transaction

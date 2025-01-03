@@ -56,7 +56,7 @@ end sim_sdram;
 
 architecture behav of sim_sdram is
     -- Real chip has 32 MiB, 16-bit words. But if we do that, the simulator will crash
-    constant word_count : integer := 65536;
+    constant word_count : integer := 128;
 
     type memory_array is array (0 to word_count) of std_logic_vector(15 downto 0);
     type powerup_state_t is (
@@ -112,9 +112,6 @@ begin
             power_on_time <= now;
             powerup_state <= powerup_want_wait;
             seen_startup_refreshes <= 0;
-            for word in 0 to word_count loop
-                memory(word) <= (others => 'U');
-            end loop;
         elsif (rising_edge(clk) and cke = '1') then
 
             -- Walk through and assert the powerup process
@@ -162,8 +159,12 @@ begin
             last_full_refresh_time <= now;
             active_row <= "UUUUUUUUUUUUU";
             active_bank <= "UU";
+            for word in 0 to word_count loop
+                memory(word) <= (others => 'U');
+            end loop;
         elsif (rising_edge(clk) and cke = '1') then
             new_state := state;
+            dq_o <= (others => 'U');
 
             assert (now - last_full_refresh_time < t_ref)
                 report "missed periodic refresh; last was at " & time'image(last_full_refresh_time)
@@ -288,7 +289,7 @@ begin
                             active_column <= a(8 downto 0);
                             new_state := state_reada;
                             last_transition_time <= now;
-                            cas_waits <= to_integer(unsigned(cas_latency));
+                            cas_waits <= to_integer(unsigned(cas_latency)) - 2;
                         when sdram_write =>
                             full_address := active_bank & active_row & a(8 downto 0);
                             assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
