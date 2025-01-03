@@ -111,43 +111,10 @@ architecture behav of sim_sdram is
     signal seen_periodic_refreshes : integer         := 0;
     signal last_full_refresh_time  : time            := 0 ns;
     signal cas_waits               : integer         := 0;
+    signal command                 : command_t;
 
-    function get_command(
-        f_csn  : in std_logic;
-        f_casn : in std_logic;
-        f_rasn : in std_logic;
-        f_wen  : in std_logic
-    ) return command_t is
-        variable concat : std_logic_vector(2 downto 0) := f_casn & f_rasn & f_wen;
-    begin
-        if (f_csn = '1') then
-            return command_nop;
-        else
-            case concat is
-                when "111" =>
-                    return command_nop;
-                when "011" =>
-                    return command_active;
-                when "101" =>
-                    return command_read;
-                when "100" =>
-                    return command_write;
-                when "110" =>
-                    return command_burst_terminate;
-                when "010" =>
-                    return command_precharge;
-                when "001" =>
-                    return command_refresh;
-                when "000" =>
-                    return command_load_mode_reg;
-                when others =>
-                    assert false report "unsupported command" severity error;
-            end case;
-        end if;
-    end function get_command;
 begin
     powerup: process(clk, arst_model)
-        variable command : command_t;
     begin
         if (arst_model = '0') then
             power_on_time <= now;
@@ -157,7 +124,6 @@ begin
                 memory(word) <= (others => 'U');
             end loop;
         elsif (rising_edge(clk) and cke = '1') then
-            command := get_command(csn, rasn, casn, wen);
 
             -- Walk through and assert the powerup process
             case (powerup_state) is
@@ -193,7 +159,6 @@ begin
     end process powerup;
 
     state_machine: process(clk, arst_model)
-        variable command : command_t;
         variable new_state : state_t;
         variable full_address : std_logic_vector(23 downto 0);
     begin
@@ -206,7 +171,6 @@ begin
             active_row <= "UUUUUUUUUUUUU";
             active_bank <= "UU";
         elsif (rising_edge(clk) and cke = '1') then
-            command := get_command(csn, rasn, casn, wen);
             new_state := state;
 
             assert (now - last_full_refresh_time < t_ref)
@@ -258,7 +222,7 @@ begin
                             last_transition_time <= now;
                         when others =>
                             assert false 
-                                report "invalid command while in poweron state"
+                                report "invalid command while in poweron state " & command_t'image(command)
                                 severity error;
                     end case;
                 when state_precharge =>
@@ -369,4 +333,36 @@ begin
             state <= new_state;
         end if;
     end process state_machine;
+
+    command_parser: process(csn, casn, rasn, wen, arst_model)
+        variable concat : std_logic_vector(2 downto 0);
+    begin
+        concat := rasn & casn & wen;
+        command <= command_nop;
+        if (csn = '0' and arst_model = '1') then
+            case (concat) is
+                when "111" =>
+                    command <= command_nop;
+                when "011" =>
+                    command <= command_active;
+                when "101" =>
+                    command <= command_read;
+                when "100" =>
+                    command <= command_write;
+                when "110" =>
+                    command <= command_burst_terminate;
+                when "010" =>
+                    command <= command_precharge;
+                when "001" =>
+                    command <= command_refresh;
+                when "000" =>
+                    command <= command_load_mode_reg;
+                when others =>
+                    assert false
+                        report "Unknown command " & to_string(concat)
+                        severity error;
+            end case;
+        end if;
+    end process command_parser;
+
 end behav;
