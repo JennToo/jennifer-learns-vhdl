@@ -1,6 +1,8 @@
 library ieee;
    use ieee.std_logic_1164.all;
    use ieee.numeric_std.all;
+library work;
+    use work.util.all;
 
 -- A simulated SDRAM chip. Based on the IS42S16160G-7TL datasheet since that's what
 -- the ULX3S uses.
@@ -84,16 +86,6 @@ architecture behav of sim_sdram is
         -- state_writea,
         -- state_writea_suspend
     );
-    type command_t is (
-        command_nop,
-        command_active,
-        command_read,
-        command_write,
-        command_burst_terminate,
-        command_precharge,
-        command_refresh,
-        command_load_mode_reg
-    );
 
     signal memory      : memory_array;
     signal cas_latency : std_logic_vector(2 downto 0);
@@ -111,7 +103,7 @@ architecture behav of sim_sdram is
     signal seen_periodic_refreshes : integer         := 0;
     signal last_full_refresh_time  : time            := 0 ns;
     signal cas_waits               : integer         := 0;
-    signal command                 : command_t;
+    signal command                 : sdram_command_t;
 
 begin
     powerup: process(clk, arst_model)
@@ -128,19 +120,19 @@ begin
             -- Walk through and assert the powerup process
             case (powerup_state) is
                 when powerup_want_wait =>
-                    assert command = command_nop report "in wait period for power up, no cmds allowed yet" severity error;
+                    assert command = sdram_nop report "in wait period for power up, no cmds allowed yet" severity error;
                     if (now - power_on_time >= required_power_on_wait) then
                         powerup_state <= powerup_want_precharge;
                     end if;
                 when powerup_want_precharge =>
-                    if(command /= command_nop) then
-                        assert command = command_precharge report "expecting precharge" severity error;
+                    if(command /= sdram_nop) then
+                        assert command = sdram_precharge report "expecting precharge" severity error;
                         -- TODO: verify it's precharge-all specifically
                         powerup_state <= powerup_want_refresh;
                     end if;
                 when powerup_want_refresh =>
-                    if(command /= command_nop) then
-                        assert command = command_refresh report "expecting refresh" severity error;
+                    if(command /= sdram_nop) then
+                        assert command = sdram_refresh report "expecting refresh" severity error;
                         if (seen_startup_refreshes < power_on_refresh_count - 1) then
                             seen_startup_refreshes <= seen_startup_refreshes + 1;
                         else
@@ -148,8 +140,8 @@ begin
                         end if;
                     end if;
                 when powerup_want_lmr =>
-                    if(command /= command_nop) then
-                        assert command = command_load_mode_reg report "expecting lmr" severity error;
+                    if(command /= sdram_nop) then
+                        assert command = sdram_load_mode_reg report "expecting lmr" severity error;
                         powerup_state <= powerup_ready;
                     end if;
                 when powerup_ready =>
@@ -215,19 +207,19 @@ begin
             case (new_state) is
                 when state_poweron =>
                     case (command) is
-                        when command_nop =>
+                        when sdram_nop =>
                             -- Don't care
-                        when command_precharge =>
+                        when sdram_precharge =>
                             new_state := state_precharge;
                             last_transition_time <= now;
                         when others =>
                             assert false 
-                                report "invalid command while in poweron state " & command_t'image(command)
+                                report "invalid command while in poweron state " & sdram_command_t'image(command)
                                 severity error;
                     end case;
                 when state_precharge =>
                     case (command) is
-                        when command_nop =>
+                        when sdram_nop =>
                         when others =>
                             assert false 
                                 report "invalid command while in precharge state"
@@ -235,7 +227,7 @@ begin
                     end case;
                 when state_auto_refresh =>
                     case (command) is
-                        when command_nop =>
+                        when sdram_nop =>
                         when others =>
                             assert false
                                 report "invalid command while in auto-refresh state"
@@ -243,7 +235,7 @@ begin
                     end case;
                 when state_mode_reg =>
                     case (command) is
-                        when command_nop =>
+                        when sdram_nop =>
                         when others =>
                             assert false
                                 report "invalid command while in LMR state"
@@ -251,7 +243,7 @@ begin
                     end case;
                 when state_row_active_wait =>
                     case (command) is
-                        when command_nop =>
+                        when sdram_nop =>
                         when others =>
                             assert false
                                 report "invalid command while in row_active_wait state"
@@ -259,7 +251,7 @@ begin
                     end case;
                 when state_idle =>
                     case (command) is
-                        when command_load_mode_reg =>
+                        when sdram_load_mode_reg =>
                             new_state := state_mode_reg;
                             last_transition_time <= now;
                             assert (ba = "00")
@@ -276,28 +268,28 @@ begin
                                 report "unsupported burst length in LMR" & to_string(a(3 downto 0))
                                 severity error;
                             cas_latency <= a(6 downto 4);
-                        when command_refresh =>
+                        when sdram_refresh =>
                             new_state := state_auto_refresh;
                             last_transition_time <= now;
-                        when command_active =>
+                        when sdram_active =>
                             new_state := state_row_active_wait;
                             last_transition_time <= now;
                             active_row <= a;
                             active_bank <= ba;
-                        when command_nop =>
+                        when sdram_nop =>
                             -- Don't care
                         when others =>
                             assert false report "invalid command while in idle state" severity error;
                     end case;
                 when state_row_active =>
                     case (command) is
-                        when command_read =>
+                        when sdram_read =>
                             assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
                             active_column <= a(8 downto 0);
                             new_state := state_reada;
                             last_transition_time <= now;
                             cas_waits <= to_integer(unsigned(cas_latency));
-                        when command_write =>
+                        when sdram_write =>
                             full_address := active_bank & active_row & a(8 downto 0);
                             assert a(10) = '1' report "only auto-precharge is currently supported" severity error;
                             -- TODO: dqm
@@ -305,11 +297,11 @@ begin
                             -- TODO: we need to validate t_dpl first
                             new_state := state_precharge;
                             last_transition_time <= now;
-                        when command_precharge =>
+                        when sdram_precharge =>
                             -- TODO: do we need to validate some timing here?
                             new_state := state_precharge;
                             last_transition_time <= now;
-                        when command_nop =>
+                        when sdram_nop =>
                             -- Don't care
                         when others =>
                             assert false report "invalid command while in row_active state" severity error;
@@ -323,7 +315,7 @@ begin
                         last_transition_time <= now;
                     else
                         -- Technically other commands can be interleaved, but we don't support it
-                        assert command = command_nop report "waiting for CAS latency" severity error;
+                        assert command = sdram_nop report "waiting for CAS latency" severity error;
                         cas_waits <= cas_waits - 1;
                     end if;
                 when others =>
@@ -338,25 +330,25 @@ begin
         variable concat : std_logic_vector(2 downto 0);
     begin
         concat := rasn & casn & wen;
-        command <= command_nop;
+        command <= sdram_nop;
         if (csn = '0' and arst_model = '1') then
             case (concat) is
                 when "111" =>
-                    command <= command_nop;
+                    command <= sdram_nop;
                 when "011" =>
-                    command <= command_active;
+                    command <= sdram_active;
                 when "101" =>
-                    command <= command_read;
+                    command <= sdram_read;
                 when "100" =>
-                    command <= command_write;
+                    command <= sdram_write;
                 when "110" =>
-                    command <= command_burst_terminate;
+                    command <= sdram_burst_terminate;
                 when "010" =>
-                    command <= command_precharge;
+                    command <= sdram_precharge;
                 when "001" =>
-                    command <= command_refresh;
+                    command <= sdram_refresh;
                 when "000" =>
-                    command <= command_load_mode_reg;
+                    command <= sdram_load_mode_reg;
                 when others =>
                     assert false
                         report "Unknown command " & to_string(concat)
