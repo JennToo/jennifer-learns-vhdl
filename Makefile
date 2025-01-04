@@ -25,7 +25,10 @@ build/work/$(1):
 endef
 
 define DEFINE_BITSTREAM
-bitstreams: build/work/$(1)/$(1).config
+bitstreams: build/work/$(1)/$(1).bit
+
+program-$(1):
+	./scripts/ulx3s-ftp-upload $(ULX3S_ESP32_HOST) build/work/$(1)/$(1).bit
 
 build/work/$(1)/pll.v: | build/work/$(1)
 	ecppll $(3) --file $$@
@@ -35,6 +38,9 @@ build/work/$(1)/$(1).json: $(2) build/work/$(1)/pll.v | build/work/$(1)
 
 build/work/$(1)/$(1).config: build/work/$(1)/$(1).json
 	nextpnr-ecp5 --json $$< --textcfg $$@ --lpf synth/ulx3s/ulx3s_v20.lpf --85k --package CABGA381
+
+build/work/$(1)/$(1).bit: build/work/$(1)/$(1).config
+	ecppack $$< $$@
 
 build/work/$(1):
 	mkdir -p $$@

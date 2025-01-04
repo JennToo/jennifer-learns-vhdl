@@ -7,6 +7,7 @@ entity toplevel is
         clk_25mhz  : in     std_logic;
         btn        : in     std_logic_vector(6 downto 0);
         led        : out    std_logic_vector(7 downto 0);
+        wifi_gpio0 : out    std_logic;
         sdram_clk  : out    std_logic;
         sdram_cke  : out    std_logic;
         sdram_csn  : out    std_logic;
@@ -41,6 +42,7 @@ architecture rtl of toplevel is
     end component;
 begin
 
+    wifi_gpio0 <= '1';
     clk <= clk_100mhz;
     sdram_d <= dq_o when dq_oe = '1' else (others => 'Z');
     sdram_clk <= clk;
