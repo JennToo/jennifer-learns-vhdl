@@ -27,7 +27,7 @@ endef
 define DEFINE_BITSTREAM
 bitstreams: build/work/$(1)/$(1).bit
 
-program-$(1):
+program-$(1): build/work/$(1)/$(1).bit
 	./scripts/ulx3s-ftp-upload $(ULX3S_ESP32_HOST) build/work/$(1)/$(1).bit
 
 build/work/$(1)/pll.v: | build/work/$(1)

@@ -70,8 +70,7 @@ architecture behave of basic_sdram is
     -- counter for all states that require waits.
     signal transition_timer            : unsigned(timer_width - 1 downto 0);
     signal state                       : state_t;
-    signal remaining_powerup_refreshes : unsigned(refresh_count_width - 1 downto 0);
-    signal required_periodic_refresh   : unsigned(3 downto 0);
+    signal required_refreshes          : unsigned(refresh_count_width - 1 downto 0);
     signal refresh_timer               : unsigned(refresh_timer_width - 1 downto 0);
     signal command                     : sdram_command_t;
     signal read_address                : std_logic_vector(23 downto 0);
@@ -98,7 +97,7 @@ begin
             state <= state_powerup_wait;
             write_complete <= '0';
             read_complete <= '0';
-            required_periodic_refresh <= to_unsigned(0, 4);
+            required_refreshes <= to_unsigned(0, refresh_count_width);
             refresh_timer <= to_unsigned(refresh_timer_cycles, refresh_timer_width);
         elsif rising_edge(clk) then
             write_complete <= '0';
@@ -113,7 +112,7 @@ begin
             if refresh_timer /= 0 then
                 refresh_timer <= refresh_timer - 1;
             else
-                required_periodic_refresh <= required_periodic_refresh + 1;
+                required_refreshes <= required_refreshes + 1;
                 refresh_timer <= to_unsigned(refresh_timer_cycles, refresh_timer_width);
             end if;
 
@@ -130,19 +129,19 @@ begin
                     when state_powerup_precharge =>
                         command <= sdram_refresh;
                         transition_timer <= to_unsigned(t_rc_cycles, timer_width);
-                        remaining_powerup_refreshes <=
+                        required_refreshes <=
                             to_unsigned(total_powerup_refreshes-1, refresh_count_width);
                         state <= state_powerup_refresh;
                     when state_powerup_refresh =>
-                        if remaining_powerup_refreshes = 0 then
+                        if required_refreshes = 0 then
                             ba <= "00";
                             a <= "0000000100000";
                             command <= sdram_load_mode_reg;
                             transition_timer <= to_unsigned(t_mrd_cycles, timer_width);
                             state <= state_powerup_mode_register;
                         else
-                            remaining_powerup_refreshes <=
-                                remaining_powerup_refreshes - 1;
+                            required_refreshes <=
+                                required_refreshes - 1;
                             command <= sdram_refresh;
                             transition_timer <= to_unsigned(t_rc_cycles, timer_width);
                         end if;
@@ -150,10 +149,10 @@ begin
                         transition_timer <= to_unsigned(0, timer_width);
                         state <= state_idle;
                     when state_idle =>
-                        if (required_periodic_refresh /= 0) then
+                        if (required_refreshes /= 0) then
                             command <= sdram_refresh;
                             transition_timer <= to_unsigned(t_rc_cycles, timer_width);
-                            required_periodic_refresh <= required_periodic_refresh - 1;
+                            required_refreshes <= required_refreshes - 1;
                         -- Technically we could wait for just the address, but
                         -- then we risk getting stuck in ACTIVATE until the
                         -- initiator gives us the data. Which could cause us to
