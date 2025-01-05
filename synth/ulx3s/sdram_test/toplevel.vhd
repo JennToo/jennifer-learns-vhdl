@@ -30,7 +30,6 @@ architecture rtl of toplevel is
     signal clk           : std_logic;
     signal fault         : std_logic;
     signal address       : std_logic_vector(31 downto 0);
-
     signal clk_100mhz    : std_logic;
 
     component pll is
