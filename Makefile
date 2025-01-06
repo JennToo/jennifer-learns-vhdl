@@ -34,7 +34,7 @@ build/work/$(1)/pll.v: | build/work/$(1)
 	ecppll $(3) --file $$@
 
 build/work/$(1)/$(1).json: $(2) build/work/$(1)/pll.v | build/work/$(1)
-	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --no-formal $(2) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
+	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --std=08 --no-formal $(2) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
 
 build/work/$(1)/$(1).config: build/work/$(1)/$(1).json
 	nextpnr-ecp5 --json $$< --textcfg $$@ --lpf synth/ulx3s/ulx3s_v20.lpf --85k --package CABGA381

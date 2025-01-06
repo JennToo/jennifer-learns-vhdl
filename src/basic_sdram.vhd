@@ -8,6 +8,7 @@ library work;
 -- request and closes it automatically.
 entity basic_sdram is
     generic (
+        width_bytes             : integer := 2;
         clk_period              : time;
         required_power_on_wait  : time    := 200 us;
         total_powerup_refreshes : integer := 8;
@@ -32,11 +33,11 @@ entity basic_sdram is
         casn  : out std_logic;
         rasn  : out std_logic;
         wen   : out std_logic;
-        dqm   : out std_logic_vector(1 downto 0);
+        dqm   : out std_logic_vector(width_bytes-1 downto 0);
         ba    : out std_logic_vector(1 downto 0);
         a     : out std_logic_vector(12 downto 0);
-        dq_o  : out std_logic_vector(15 downto 0);
-        dq_i  : in  std_logic_vector(15 downto 0);
+        dq_o  : out std_logic_vector(8 * width_bytes - 1 downto 0);
+        dq_i  : in  std_logic_vector(8 * width_bytes - 1 downto 0);
         dq_oe : out std_logic
     );
 end basic_sdram;
@@ -52,7 +53,7 @@ architecture behave of basic_sdram is
     constant t_rcd_cycles         : integer := period_to_cycles(t_rcd, clk_period, true);
     constant t_dpl_cycles         : integer := period_to_cycles(t_dpl, clk_period, true);
     constant cas_latency          : integer := 2;
-    constant refresh_count_width  : integer := clog2(total_powerup_refreshes);
+    constant refresh_count_width  : integer := maximum(clog2(total_powerup_refreshes), 4);
     constant refresh_timer_cycles : integer := period_to_cycles(t_ref, clk_period, false) / periodic_refresh_count - t_rc_cycles;
     constant refresh_timer_width  : integer := clog2(refresh_timer_cycles);
 
@@ -75,8 +76,8 @@ architecture behave of basic_sdram is
     signal command                     : sdram_command_t;
     signal read_address                : std_logic_vector(23 downto 0);
     signal write_address               : std_logic_vector(23 downto 0);
-    signal write_data                  : std_logic_vector(15 downto 0);
-    signal read_data                   : std_logic_vector(15 downto 0);
+    signal write_data                  : std_logic_vector(8 * width_bytes - 1 downto 0);
+    signal read_data                   : std_logic_vector(8 * width_bytes - 1 downto 0);
     signal write_strobe                : std_logic_vector(1 downto 0);
     signal read_address_stored         : std_logic;
     signal write_address_stored        : std_logic;
