@@ -6,6 +6,13 @@ library work;
 
 -- Simple SDRAM controller with no burst support, opens the row for every
 -- request and closes it automatically.
+--
+-- TODO: One way to make this generic across word widths may be to separate the
+-- command generation logic from the data handling into separate components.
+-- The AXI handler is already mostly separated. The biggest change would be
+-- that the AXI handler (or maybe just a new split-out component) would handle
+-- driving the DQ/DQM lines instead of the command state machine like it is
+-- now.
 entity basic_sdram is
     generic (
         clk_period              : time;
