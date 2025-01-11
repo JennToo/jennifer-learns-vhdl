@@ -13,19 +13,18 @@ entity lfsr_16 is
 end lfsr_16;
 
 architecture rtl of lfsr_16 is
-    signal next_bit : std_logic;
+    signal next_bit  : std_logic;
+    signal out_value : std_logic_vector(15 downto 0);
 begin
-    --next_bit <= value(15) xor value(13) xor value(12) xor value(10) xor value(0);
-    --next_bit <= value(0) xor value(10) xor value(12) xor value(13) xor value(15);
-    --next_bit <= value(0) xor value(2) xor value(3) xor value(5);
-    next_bit <= value(5) xor value(3) xor value(2) xor value(0);
+    next_bit <= out_value(5) xor out_value(3) xor out_value(2) xor out_value(0);
+    value <= out_value;
 
     shifter: process(clk, arst) begin
         if (arst = '0') then
-            value <= seed;
+            out_value <= seed;
         elsif (rising_edge(clk)) then
-            value <= value srl 1;
-            value(15) <= next_bit;
+            out_value <= out_value srl 1;
+            out_value(15) <= next_bit;
         end if;
     end process shifter;
 end rtl;

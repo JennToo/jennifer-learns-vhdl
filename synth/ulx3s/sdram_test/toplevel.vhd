@@ -1,5 +1,6 @@
 library ieee;
    use ieee.std_logic_1164.all;
+   use ieee.numeric_std.all;
    use work.util.all;
 
 entity toplevel is
@@ -32,6 +33,12 @@ architecture rtl of toplevel is
     signal address       : std_logic_vector(31 downto 0);
     signal clk_100mhz    : std_logic;
 
+    signal lfsr_value    : std_logic_vector(15 downto 0);
+    signal nonsense_value_1 : unsigned(31 downto 0);
+    signal nonsense_value_2 : unsigned(31 downto 0);
+    signal nonsense_value_3 : unsigned(31 downto 0);
+    signal nonsense_value_vec : std_logic_vector(31 downto 0);
+
     component pll is
         port (
             clkin : in std_logic;
@@ -49,7 +56,7 @@ begin
     arst <= btn(0);
 
     led(7) <= fault;
-    led(6 downto 0) <= address(23 downto 17);
+    led(6 downto 0) <= nonsense_value_vec(23 downto 17);
 
     pll_0: pll
     port map (
@@ -93,4 +100,26 @@ begin
         address => address,
         fault => fault
     );
+
+    lfsr_16_0: entity work.lfsr_16
+    generic map (
+        seed => x"ACE1"
+    )
+    port map (
+        clk   => clk,
+        arst  => arst,
+        value => lfsr_value
+    );
+
+    nonsense_value_1 <= unsigned(lfsr_value & lfsr_value);
+    nonsense_value_vec <= std_logic_vector(nonsense_value_3);
+    nonsense: process(clk, arst) begin
+        if (arst = '0') then
+            nonsense_value_2 <= to_unsigned(0, 32);
+            nonsense_value_3 <= (others => '0');
+        elsif (rising_edge(clk)) then
+            nonsense_value_2 <= nonsense_value_1;
+            nonsense_value_3 <= nonsense_value_1 + nonsense_value_2;
+        end if;
+    end process nonsense;
 end architecture rtl;
