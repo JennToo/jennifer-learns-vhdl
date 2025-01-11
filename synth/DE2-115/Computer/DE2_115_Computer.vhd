@@ -152,4 +152,12 @@ end entity DE2_115_Computer;
 architecture rtl of DE2_115_Computer is
 begin
     LEDG <= "010101100";
+    HEX0 <= (others => '0');
+    HEX1 <= (others => '0');
+    HEX2 <= (others => '0');
+    HEX3 <= (others => '0');
+    HEX4 <= (others => '0');
+    HEX5 <= (others => '0');
+    HEX6 <= (others => '0');
+    HEX7 <= (others => '0');
 end rtl;

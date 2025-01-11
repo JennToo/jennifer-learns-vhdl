@@ -24,7 +24,7 @@ build/work/$(1):
 	mkdir -p $$@
 endef
 
-define DEFINE_BITSTREAM
+define DEFINE_ECP5_BITSTREAM
 bitstreams: build/work/$(1)/$(1).bit
 
 program-$(1): build/work/$(1)/$(1).bit
@@ -46,13 +46,40 @@ build/work/$(1):
 	mkdir -p $$@
 endef
 
+define DEFINE_QUARTUS_BITSTREAM
+bitstreams: build/work/$(1)/meta-built
+
+build/work/$(1)/meta-built: $(SOURCES)
+	rm -rf build/work/$(1)
+	mkdir -p build/work/$(1)
+	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(SOURCES) build/work/$(1)/
+	cd build/work/$(1)/ && \
+		set -x && \
+		$(QUARTUS_ROOTDIR)/quartus_sh --prepare $(PROJECT) && \
+		$(QUARTUS_ROOTDIR)/quartus_map --read_settings_files=on \
+			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
+		$(QUARTUS_ROOTDIR)/quartus_fit --read_settings_files=on \
+			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
+		$(QUARTUS_ROOTDIR)/quartus_asm --read_settings_files=on \
+			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
+		$(QUARTUS_ROOTDIR)/quartus_sta $(PROJECT) -c $(PROJECT)
+	touch $@
+endef
+
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx,src/spi_rx.vhd test/tb_spi_rx.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_sdram,src/util.vhd test/test_util.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_sdram_memtester,src/util.vhd src/memtester.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram_memtester.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_util,src/util.vhd test/tb_util.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_lfsr,src/lfsr_16.vhd test/tb_lfsr.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_vga,src/util.vhd src/vga.vhd test/tb_vga.vhd))
-$(eval $(call DEFINE_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd,--clkin 25 --clkout0 100))
+$(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd,--clkin 25 --clkout0 100))
+
+PROJECT  := DE2_115_Computer
+QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
+QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
+SDC_FILE := synth/DE2-115/Computer/$(PROJECT).sdc
+SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd
+$(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 
 clean:
 	rm -rf build
