@@ -43,6 +43,13 @@ package util is
         rdata   : std_logic_vector(15 downto 0);
         rresp   : std_logic_vector(1 downto 0);
     end record axi4l_target_signals_t;
+
+    type pixel_t is record
+        red   : std_logic_vector(7 downto 0);
+        green : std_logic_vector(7 downto 0);
+        blue  : std_logic_vector(7 downto 0);
+    end record pixel_t;
+
 end package util;
 
 package body util is

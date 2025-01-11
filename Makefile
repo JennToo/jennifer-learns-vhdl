@@ -51,6 +51,7 @@ $(eval $(call DEFINE_SIMULATION,tb_sdram,src/util.vhd test/test_util.vhd test/si
 $(eval $(call DEFINE_SIMULATION,tb_sdram_memtester,src/util.vhd src/memtester.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram_memtester.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_util,src/util.vhd test/tb_util.vhd))
 $(eval $(call DEFINE_SIMULATION,tb_lfsr,src/lfsr_16.vhd test/tb_lfsr.vhd))
+$(eval $(call DEFINE_SIMULATION,tb_vga,src/util.vhd src/vga.vhd test/tb_vga.vhd))
 $(eval $(call DEFINE_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd,--clkin 25 --clkout0 100))
 
 clean:
