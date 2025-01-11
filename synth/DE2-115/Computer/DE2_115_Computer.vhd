@@ -151,5 +151,5 @@ end entity DE2_115_Computer;
 
 architecture rtl of DE2_115_Computer is
 begin
-    LEDG <= '010101100';
+    LEDG <= "010101100";
 end rtl;
