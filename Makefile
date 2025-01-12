@@ -76,24 +76,26 @@ endef
 SOURCES := src/spi_rx.vhd test/tb_spi_rx.vhd
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx))
 
-SOURCES := src/util.vhd test/test_util.vhd test/sim_sdram.vhd \
+SOURCES := src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
+		   test/test_util.vhd test/sim_sdram.vhd \
 		   src/basic_sdram.vhd test/tb_sdram.vhd
 $(eval $(call DEFINE_SIMULATION,tb_sdram))
 
-SOURCES := src/util.vhd src/memtester.vhd test/sim_sdram.vhd \
+SOURCES := src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
+		   src/memtester.vhd test/sim_sdram.vhd \
 		   src/basic_sdram.vhd test/tb_sdram_memtester.vhd
 $(eval $(call DEFINE_SIMULATION,tb_sdram_memtester))
 
-SOURCES := src/util.vhd test/tb_util.vhd
+SOURCES := src/pkg/math.vhd test/tb_util.vhd
 $(eval $(call DEFINE_SIMULATION,tb_util))
 
 SOURCES := src/lfsr_16.vhd test/tb_lfsr.vhd
 $(eval $(call DEFINE_SIMULATION,tb_lfsr))
 
-SOURCES := src/util.vhd src/vga.vhd test/tb_vga.vhd
+SOURCES := src/pkg/graphics.vhd src/pkg/math.vhd src/vga.vhd test/tb_vga.vhd
 $(eval $(call DEFINE_SIMULATION,tb_vga))
 
-SOURCES := src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd
+SOURCES := src/pkg/axi.vhd src/pkg/sdram.vhd src/pkg/math.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd
 CLOCKS  := --clkin 25 --clkout0 100
 $(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test))
 
@@ -101,7 +103,8 @@ PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
 QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
 SDC_FILE := synth/DE2-115/Computer/$(PROJECT).sdc
-SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd src/vga.vhd src/util.vhd \
+SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd src/vga.vhd \
+			src/pkg/math.vhd src/pkg/graphics.vhd \
 			synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
 			synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))

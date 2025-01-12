@@ -1,8 +1,9 @@
 library ieee;
-   use ieee.std_logic_1164.all;
-   use ieee.numeric_std.all;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
 library work;
-   use work.util.all;
+use work.axi.all;
 
 entity tb_sdram_memtester is
 end tb_sdram_memtester;

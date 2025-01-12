@@ -1,7 +1,7 @@
 library ieee;
-   use ieee.std_logic_1164.all;
+use ieee.std_logic_1164.all;
 library work;
-    use work.util.all;
+use work.axi.all;
 
 package test_util is
     procedure axi_write_word(

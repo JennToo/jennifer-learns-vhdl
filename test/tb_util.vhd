@@ -1,5 +1,5 @@
 library work;
-    use work.util.all;
+use work.math.all;
 
 entity tb_util is
 end tb_util;

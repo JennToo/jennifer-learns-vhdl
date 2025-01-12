@@ -1,7 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
+
 library work;
-use work.util.all;
+use work.graphics.all;
 
 entity tb_vga is
 end tb_vga;

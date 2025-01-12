@@ -1,8 +1,10 @@
 library ieee;
-   use ieee.std_logic_1164.all;
-   use ieee.numeric_std.all;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 library work;
-    use work.util.all;
+use work.axi.all;
+use work.math.all;
+use work.sdram.all;
 
 -- A simulated SDRAM chip. Based on the IS42S16160G-7TL datasheet since that's what
 -- the ULX3S uses.
