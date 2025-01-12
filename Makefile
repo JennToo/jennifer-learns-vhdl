@@ -64,6 +64,13 @@ build/work/$(1)/meta-built: $(SOURCES)
 			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
 		$(QUARTUS_ROOTDIR)/quartus_sta $(PROJECT) -c $(PROJECT)
 	touch $$@
+
+quartus-$(1): $(SOURCES)
+	mkdir -p build/work/$(1)
+	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(SOURCES) build/work/$(1)/
+	cd build/work/$(1)/ && \
+		set -x && \
+		$(QUARTUS_ROOTDIR)/quartus $(PROJECT)
 endef
 
 SOURCES := src/spi_rx.vhd test/tb_spi_rx.vhd
