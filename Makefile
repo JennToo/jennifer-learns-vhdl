@@ -49,10 +49,10 @@ endef
 define DEFINE_QUARTUS_BITSTREAM
 bitstreams: build/work/$(1)/meta-built
 
-build/work/$(1)/meta-built: $(SOURCES)
+build/work/$(1)/meta-built: $(SOURCES) $(COPIED_SOURCES) Makefile
 	rm -rf build/work/$(1)
 	mkdir -p build/work/$(1)
-	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(SOURCES) build/work/$(1)/
+	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(COPIED_SOURCES) build/work/$(1)/
 	cd build/work/$(1)/ && \
 		set -x && \
 		$(QUARTUS_ROOTDIR)/quartus_sh --prepare $(PROJECT) && \
@@ -103,10 +103,12 @@ PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
 QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
 SDC_FILE := synth/DE2-115/Computer/$(PROJECT).sdc
-SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd src/vga.vhd \
-			src/pkg/math.vhd src/pkg/graphics.vhd \
-			synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
-			synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf
+SOURCES  := \
+	src/vga.vhd src/pkg/math.vhd src/pkg/graphics.vhd
+COPIED_SOURCES := \
+	synth/DE2-115/Computer/DE2_115_Computer.vhd \
+	synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
+	synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 
 clean:
