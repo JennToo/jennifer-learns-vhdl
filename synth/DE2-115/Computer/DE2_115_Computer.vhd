@@ -1,5 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
+library work;
+use work.util.all;
 
 entity DE2_115_Computer is
     port (
@@ -150,14 +152,54 @@ entity DE2_115_Computer is
 end entity DE2_115_Computer;
 
 architecture rtl of DE2_115_Computer is
+    signal system_clk  : std_logic;
+    signal hblank      : std_logic;
+    signal vblank      : std_logic;
+    signal hsync       : std_logic;
+    signal vsync       : std_logic;
+    signal pixel_gen   : pixel_t;
+    signal timed_pixel : pixel_t;
 begin
     LEDG <= "010101100";
-    HEX0 <= (others => '0');
-    HEX1 <= (others => '0');
-    HEX2 <= (others => '0');
-    HEX3 <= (others => '0');
-    HEX4 <= (others => '0');
-    HEX5 <= (others => '0');
-    HEX6 <= (others => '0');
-    HEX7 <= (others => '0');
+    HEX0 <= (others => '1');
+    HEX1 <= (others => '1');
+    HEX2 <= (others => '1');
+    HEX3 <= (others => '1');
+    HEX4 <= (others => '1');
+    HEX5 <= (others => '1');
+    HEX6 <= (others => '1');
+    HEX7 <= (others => '1');
+
+    pll_0: entity work.SystemClock
+    port map (
+        inclk0 => CLOCK_50,
+        c0     => system_clk,
+        locked => open
+    );
+
+
+    VGA_R       <= timed_pixel.red;
+    VGA_G       <= timed_pixel.green;
+    VGA_B       <= timed_pixel.blue;
+    VGA_SYNC_N  <= '0';
+    VGA_BLANK_N <= not (hblank or vblank);
+    VGA_HS      <= hsync when SW(17) else '1';
+    VGA_VS      <= vsync when SW(17) else '1';
+
+    vga_0: entity work.vga
+    port map (
+        clk       => system_clk,
+        arst      => KEY(0),
+        pixel_i   => pixel_gen,
+        pixel_o   => timed_pixel,
+        hsync     => hsync,
+        vsync     => vsync,
+        hblank    => hblank,
+        vblank    => vblank,
+        pixel_clk => VGA_CLK
+    );
+
+    pixel_gen.red   <= "11111111";
+    pixel_gen.green <= "00000000";
+    pixel_gen.blue  <= "11111111";
 end rtl;

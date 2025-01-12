@@ -13,7 +13,7 @@ entity vga is
 
         hsync_front_porch : integer   := 16;
         hsync_sync_pulse  : integer   := 96;
-        hsync_back_porch  : integer   := 16;
+        hsync_back_porch  : integer   := 48;
         hsync_polarity    : std_logic := '1';
 
         vsync_front_porch : integer   := 10;

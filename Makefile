@@ -63,7 +63,7 @@ build/work/$(1)/meta-built: $(SOURCES)
 		$(QUARTUS_ROOTDIR)/quartus_asm --read_settings_files=on \
 			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
 		$(QUARTUS_ROOTDIR)/quartus_sta $(PROJECT) -c $(PROJECT)
-	touch $@
+	touch $$@
 endef
 
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx,src/spi_rx.vhd test/tb_spi_rx.vhd))
@@ -78,7 +78,9 @@ PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
 QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
 SDC_FILE := synth/DE2-115/Computer/$(PROJECT).sdc
-SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd
+SOURCES  := synth/DE2-115/Computer/DE2_115_Computer.vhd src/vga.vhd src/util.vhd \
+			synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
+			synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 
 clean:
