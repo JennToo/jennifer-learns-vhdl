@@ -9,11 +9,11 @@ waves-$(1):
 ghdl-lint: ghdl-lint-$(1)
 
 ghdl-lint-$(1):
-	ghdl -s --std=08 -Wall $(2)
+	ghdl -s --std=08 -Wall $(SOURCES)
 
-build/work/$(1)/$(1): $(2) | build/work/$(1)
-	ghdl -s --std=08 --workdir=build/work/$(1) $(2)
-	ghdl -a --std=08 -Wall --workdir=build/work/$(1) $(2)
+build/work/$(1)/$(1): $(SOURCES) | build/work/$(1)
+	ghdl -s --std=08 --workdir=build/work/$(1) $(SOURCES)
+	ghdl -a --std=08 -Wall --workdir=build/work/$(1) $(SOURCES)
 	ghdl -e --std=08 --workdir=build/work/$(1) -o $$@ $(1)
 
 build/work/$(1)/meta-sim-run: build/work/$(1)/$(1)
@@ -31,10 +31,10 @@ program-$(1): build/work/$(1)/$(1).bit
 	./scripts/ulx3s-ftp-upload $(ULX3S_ESP32_HOST) build/work/$(1)/$(1).bit
 
 build/work/$(1)/pll.v: | build/work/$(1)
-	ecppll $(3) --file $$@
+	ecppll $(CLOCKS) --file $$@
 
-build/work/$(1)/$(1).json: $(2) build/work/$(1)/pll.v | build/work/$(1)
-	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --no-formal --std=08 $(2) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
+build/work/$(1)/$(1).json: $(SOURCES) build/work/$(1)/pll.v | build/work/$(1)
+	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --no-formal --std=08 $(SOURCES) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
 
 build/work/$(1)/$(1).config: build/work/$(1)/$(1).json
 	nextpnr-ecp5 --json $$< --textcfg $$@ --lpf synth/ulx3s/ulx3s_v20.lpf --85k --package CABGA381
@@ -66,13 +66,29 @@ build/work/$(1)/meta-built: $(SOURCES)
 	touch $$@
 endef
 
-$(eval $(call DEFINE_SIMULATION,tb_spi_rx,src/spi_rx.vhd test/tb_spi_rx.vhd))
-$(eval $(call DEFINE_SIMULATION,tb_sdram,src/util.vhd test/test_util.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram.vhd))
-$(eval $(call DEFINE_SIMULATION,tb_sdram_memtester,src/util.vhd src/memtester.vhd test/sim_sdram.vhd src/basic_sdram.vhd test/tb_sdram_memtester.vhd))
-$(eval $(call DEFINE_SIMULATION,tb_util,src/util.vhd test/tb_util.vhd))
-$(eval $(call DEFINE_SIMULATION,tb_lfsr,src/lfsr_16.vhd test/tb_lfsr.vhd))
-$(eval $(call DEFINE_SIMULATION,tb_vga,src/util.vhd src/vga.vhd test/tb_vga.vhd))
-$(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test,src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd,--clkin 25 --clkout0 100))
+SOURCES := src/spi_rx.vhd test/tb_spi_rx.vhd
+$(eval $(call DEFINE_SIMULATION,tb_spi_rx))
+
+SOURCES := src/util.vhd test/test_util.vhd test/sim_sdram.vhd \
+		   src/basic_sdram.vhd test/tb_sdram.vhd
+$(eval $(call DEFINE_SIMULATION,tb_sdram))
+
+SOURCES := src/util.vhd src/memtester.vhd test/sim_sdram.vhd \
+		   src/basic_sdram.vhd test/tb_sdram_memtester.vhd
+$(eval $(call DEFINE_SIMULATION,tb_sdram_memtester))
+
+SOURCES := src/util.vhd test/tb_util.vhd
+$(eval $(call DEFINE_SIMULATION,tb_util))
+
+SOURCES := src/lfsr_16.vhd test/tb_lfsr.vhd
+$(eval $(call DEFINE_SIMULATION,tb_lfsr))
+
+SOURCES := src/util.vhd src/vga.vhd test/tb_vga.vhd
+$(eval $(call DEFINE_SIMULATION,tb_vga))
+
+SOURCES := src/util.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd
+CLOCKS  := --clkin 25 --clkout0 100
+$(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test))
 
 PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
