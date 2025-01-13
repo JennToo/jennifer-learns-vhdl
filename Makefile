@@ -49,13 +49,9 @@ endef
 define DEFINE_QUARTUS_BITSTREAM
 bitstreams: build/work/$(1)/meta-built
 
-build/work/$(1)/meta-built: $(SOURCES) $(COPIED_SOURCES) $(QSF_FILE) $(QPF_FILE) Makefile
-	rm -rf build/work/$(1)
-	mkdir -p build/work/$(1)
-	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(COPIED_SOURCES) build/work/$(1)/
+build/work/$(1)/meta-built: $(SOURCES) build/work/$(1)/meta-prepared
 	cd build/work/$(1)/ && \
 		set -x && \
-		$(QUARTUS_ROOTDIR)/quartus_sh --prepare $(PROJECT) && \
 		$(QUARTUS_ROOTDIR)/quartus_map --read_settings_files=on \
 			--write_settings_files=off $(PROJECT) -c $(PROJECT) && \
 		$(QUARTUS_ROOTDIR)/quartus_fit --read_settings_files=on \
@@ -65,11 +61,17 @@ build/work/$(1)/meta-built: $(SOURCES) $(COPIED_SOURCES) $(QSF_FILE) $(QPF_FILE)
 		$(QUARTUS_ROOTDIR)/quartus_sta $(PROJECT) -c $(PROJECT)
 	touch $$@
 
-quartus-$(1): $(SOURCES)
-	mkdir -p build/work/$(1)
-	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(SOURCES) build/work/$(1)/
+build/work/$(1)/meta-prepared: $(QSF_FILE) $(QPF_FILE) | build/work/$(1)
+	cp $(QSF_FILE) $(QPF_FILE) build/work/$(1)/
 	cd build/work/$(1)/ && \
-		set -x && \
+		$(QUARTUS_ROOTDIR)/quartus_sh --prepare $(PROJECT)
+	touch $$@
+
+build/work/$(1):
+	mkdir -p $$@
+
+quartus-$(1): build/work/$(1)/meta-prepared
+	cd build/work/$(1)/ && \
 		$(QUARTUS_ROOTDIR)/quartus $(PROJECT)
 endef
 
@@ -105,13 +107,12 @@ $(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test))
 PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
 QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
-SDC_FILE := synth/DE2-115/Computer/$(PROJECT).sdc
 SOURCES  := \
-	src/vga.vhd src/pkg/math.vhd src/pkg/graphics.vhd
-COPIED_SOURCES := \
+	src/vga.vhd src/pkg/math.vhd src/pkg/graphics.vhd \
 	synth/DE2-115/Computer/DE2_115_Computer.vhd \
 	synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
-	synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf
+	synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf \
+	synth/DE2-115/Computer/$(PROJECT).sdc
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 
 clean:

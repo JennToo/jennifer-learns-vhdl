@@ -11,7 +11,7 @@ set_global_assignment -name PROJECT_CREATION_TIME_DATE "15:34:47 JANUARY 11,2025
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 780
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 7
-set_global_assignment -name SDC_FILE DE2_115_Computer.sdc
+set_global_assignment -name SDC_FILE ../../../synth/DE2-115/Computer/DE2_115_Computer.sdc
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 
 #============================================================
@@ -920,7 +920,7 @@ set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_FILE ../../../src/pkg/math.vhd
 set_global_assignment -name VHDL_FILE ../../../src/pkg/graphics.vhd
 set_global_assignment -name VHDL_FILE ../../../src/vga.vhd
-set_global_assignment -name QIP_FILE SystemClock.qip
-set_global_assignment -name VHDL_FILE DE2_115_Computer.vhd
+set_global_assignment -name QIP_FILE ../../../synth/DE2-115/Computer/SystemClock.qip
+set_global_assignment -name VHDL_FILE ../../../synth/DE2-115/Computer/DE2_115_Computer.vhd
 
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 8
