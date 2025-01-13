@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+import pathlib
+
+reports = pathlib.Path("build").glob("**/*.rpt")
+contents = []
+for report in reports:
+    try:
+        contents += report.read_text(encoding="utf-8").splitlines(keepends=False)
+    except (OSError, UnicodeError):
+        pass
+for line in contents:
+    for diagnostic in ("Warning ", "Error "):
+        if line.startswith(diagnostic):
+            print(line)
+            break
