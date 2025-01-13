@@ -922,3 +922,5 @@ set_global_assignment -name VHDL_FILE ../../../src/pkg/graphics.vhd
 set_global_assignment -name VHDL_FILE ../../../src/vga.vhd
 set_global_assignment -name QIP_FILE SystemClock.qip
 set_global_assignment -name VHDL_FILE DE2_115_Computer.vhd
+
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 8

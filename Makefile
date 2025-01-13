@@ -49,7 +49,7 @@ endef
 define DEFINE_QUARTUS_BITSTREAM
 bitstreams: build/work/$(1)/meta-built
 
-build/work/$(1)/meta-built: $(SOURCES) $(COPIED_SOURCES) Makefile
+build/work/$(1)/meta-built: $(SOURCES) $(COPIED_SOURCES) $(QSF_FILE) $(QPF_FILE) Makefile
 	rm -rf build/work/$(1)
 	mkdir -p build/work/$(1)
 	cp $(QSF_FILE) $(QPF_FILE) $(SDC_FILE) $(COPIED_SOURCES) build/work/$(1)/
@@ -76,14 +76,17 @@ endef
 SOURCES := src/spi_rx.vhd test/tb_spi_rx.vhd
 $(eval $(call DEFINE_SIMULATION,tb_spi_rx))
 
-SOURCES := src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
-		   test/test_util.vhd test/sim_sdram.vhd \
-		   src/basic_sdram.vhd test/tb_sdram.vhd
+SOURCES := \
+	src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
+	test/test_util.vhd test/sim_sdram.vhd \
+	src/block_memory.vhd \
+	src/basic_sdram.vhd test/tb_sdram.vhd
 $(eval $(call DEFINE_SIMULATION,tb_sdram))
 
-SOURCES := src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
-		   src/memtester.vhd test/sim_sdram.vhd \
-		   src/basic_sdram.vhd test/tb_sdram_memtester.vhd
+SOURCES := \
+	src/pkg/axi.vhd src/pkg/math.vhd src/pkg/sdram.vhd \
+	src/memtester.vhd test/sim_sdram.vhd \
+	src/basic_sdram.vhd test/tb_sdram_memtester.vhd
 $(eval $(call DEFINE_SIMULATION,tb_sdram_memtester))
 
 SOURCES := src/pkg/math.vhd test/tb_util.vhd
