@@ -152,13 +152,14 @@ entity DE2_115_Computer is
 end entity DE2_115_Computer;
 
 architecture rtl of DE2_115_Computer is
-    signal system_clk  : std_logic;
-    signal hblank      : std_logic;
-    signal vblank      : std_logic;
-    signal hsync       : std_logic;
-    signal vsync       : std_logic;
-    signal pixel_gen   : pixel_t;
-    signal timed_pixel : pixel_t;
+    signal system_clk    : std_logic;
+    signal vga_input_clk : std_logic;
+    signal hblank        : std_logic;
+    signal vblank        : std_logic;
+    signal hsync         : std_logic;
+    signal vsync         : std_logic;
+    signal pixel_gen     : pixel_t;
+    signal timed_pixel   : pixel_t;
 begin
     LEDG <= "010101100";
     HEX0 <= (others => '1');
@@ -173,7 +174,8 @@ begin
     pll_0: entity work.SystemClock
     port map (
         inclk0 => CLOCK_50,
-        c0     => system_clk,
+        c0     => vga_input_clk,
+        c1     => system_clk,
         locked => open
     );
 
@@ -187,8 +189,23 @@ begin
     VGA_VS      <= vsync when SW(17) else '1';
 
     vga_0: entity work.vga
+    generic map (
+        -- Timing info from http://tinyvga.com/vga-timing/800x600@60Hz
+        horizontal_pixels => 800,
+        vertical_pixels   => 600,
+
+        hsync_front_porch => 40,
+        hsync_sync_pulse  => 128,
+        hsync_back_porch  => 88,
+        hsync_polarity    => '0',
+
+        vsync_front_porch => 1,
+        vsync_sync_pulse  => 4,
+        vsync_back_porch  => 23,
+        vsync_polarity    => '0'
+    )
     port map (
-        clk       => system_clk,
+        clk       => vga_input_clk,
         arst      => KEY(0),
         pixel_i   => pixel_gen,
         pixel_o   => timed_pixel,
