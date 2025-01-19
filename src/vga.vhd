@@ -26,8 +26,8 @@ entity vga is
         clk  : in std_logic;
         arst : in std_logic;
 
-        pixel_i : in  pixel_t;
-        pixel_o : out pixel_t;
+        pixel_i : in  wide_pixel_t;
+        pixel_o : out wide_pixel_t;
 
         hsync     : out std_logic;
         vsync     : out std_logic;
@@ -51,7 +51,7 @@ architecture rtl of vga is
 
     signal htimer : unsigned(htimer_width - 1 downto 0) := to_unsigned(0, htimer_width);
     signal vtimer : unsigned(vtimer_width - 1 downto 0) := to_unsigned(0, vtimer_width);
-    signal black  : pixel_t;
+    signal black  : wide_pixel_t;
 begin
     hblank      <= '1' when htimer < hblank_region else '0';
     vblank      <= '1' when vtimer < vblank_region else '0';

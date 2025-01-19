@@ -158,8 +158,8 @@ architecture rtl of DE2_115_Computer is
     signal vblank        : std_logic;
     signal hsync         : std_logic;
     signal vsync         : std_logic;
-    signal pixel_gen     : pixel_t;
-    signal timed_pixel   : pixel_t;
+    signal pixel_gen     : wide_pixel_t;
+    signal timed_pixel   : wide_pixel_t;
 begin
     LEDG <= "010101100";
     HEX0 <= (others => '1');

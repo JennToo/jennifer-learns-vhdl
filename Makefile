@@ -97,7 +97,12 @@ $(eval $(call DEFINE_SIMULATION,tb_util))
 SOURCES := src/lfsr_16.vhd test/tb_lfsr.vhd
 $(eval $(call DEFINE_SIMULATION,tb_lfsr))
 
-SOURCES := src/pkg/graphics.vhd src/pkg/math.vhd src/vga.vhd test/tb_vga.vhd
+SOURCES := \
+	src/pkg/graphics.vhd \
+	src/pkg/math.vhd \
+	src/vga_fifo_reader.vhd \
+	src/vga.vhd \
+	test/tb_vga.vhd
 $(eval $(call DEFINE_SIMULATION,tb_vga))
 
 SOURCES := src/pkg/axi.vhd src/pkg/sdram.vhd src/pkg/math.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd
