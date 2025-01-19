@@ -115,8 +115,9 @@ QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
 SOURCES  := \
 	src/vga.vhd src/pkg/math.vhd src/pkg/graphics.vhd \
 	synth/DE2-115/Computer/DE2_115_Computer.vhd \
-	synth/DE2-115/Computer/SystemClock.vhd synth/DE2-115/Computer/SystemClock.qip \
-	synth/DE2-115/Computer/SystemClock.bsf synth/DE2-115/Computer/SystemClock.ppf \
+	synth/DE2-115/Computer/clock_gen.ppf \
+	synth/DE2-115/Computer/clock_gen.qip \
+	synth/DE2-115/Computer/clock_gen.vhd \
 	synth/DE2-115/Computer/$(PROJECT).sdc
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 

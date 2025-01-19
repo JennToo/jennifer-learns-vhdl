@@ -920,8 +920,8 @@ set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name VHDL_FILE ../../../src/pkg/math.vhd
 set_global_assignment -name VHDL_FILE ../../../src/pkg/graphics.vhd
 set_global_assignment -name VHDL_FILE ../../../src/vga.vhd
-set_global_assignment -name QIP_FILE ../../../synth/DE2-115/Computer/SystemClock.qip
 set_global_assignment -name QIP_FILE "../../../synth/DE2-115/Computer/system_to_vga_fifo.qip"
+set_global_assignment -name QIP_FILE "../../../synth/DE2-115/Computer/clock_gen.qip"
 set_global_assignment -name VHDL_FILE ../../../synth/DE2-115/Computer/DE2_115_Computer.vhd
 
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 8

@@ -4,7 +4,7 @@
 -- MODULE: altpll 
 
 -- ============================================================
--- File Name: SystemClock.vhd
+-- File Name: clock_gen.vhd
 -- Megafunction Name(s):
 -- 			altpll
 --
@@ -40,7 +40,7 @@ USE ieee.std_logic_1164.all;
 LIBRARY altera_mf;
 USE altera_mf.all;
 
-ENTITY SystemClock IS
+ENTITY clock_gen IS
 	PORT
 	(
 		inclk0		: IN STD_LOGIC  := '0';
@@ -48,10 +48,10 @@ ENTITY SystemClock IS
 		c1		: OUT STD_LOGIC ;
 		locked		: OUT STD_LOGIC 
 	);
-END SystemClock;
+END clock_gen;
 
 
-ARCHITECTURE SYN OF systemclock IS
+ARCHITECTURE SYN OF clock_gen IS
 
 	SIGNAL sub_wire0	: STD_LOGIC_VECTOR (4 DOWNTO 0);
 	SIGNAL sub_wire1	: STD_LOGIC ;
@@ -147,18 +147,18 @@ BEGIN
 	altpll_component : altpll
 	GENERIC MAP (
 		bandwidth_type => "AUTO",
-		clk0_divide_by => 5,
+		clk0_divide_by => 2000,
 		clk0_duty_cycle => 50,
-		clk0_multiply_by => 4,
+		clk0_multiply_by => 1007,
 		clk0_phase_shift => "0",
-		clk1_divide_by => 1,
+		clk1_divide_by => 12500000,
 		clk1_duty_cycle => 50,
-		clk1_multiply_by => 2,
+		clk1_multiply_by => 25173611,
 		clk1_phase_shift => "0",
 		compensate_clock => "CLK0",
 		inclk0_input_frequency => 20000,
 		intended_device_family => "Cyclone IV E",
-		lpm_hint => "CBX_MODULE_PREFIX=SystemClock",
+		lpm_hint => "CBX_MODULE_PREFIX=clock_gen",
 		lpm_type => "altpll",
 		operation_mode => "NORMAL",
 		pll_type => "AUTO",
@@ -239,8 +239,8 @@ END SYN;
 -- Retrieval info: PRIVATE: DIV_FACTOR1 NUMERIC "1"
 -- Retrieval info: PRIVATE: DUTY_CYCLE0 STRING "50.00000000"
 -- Retrieval info: PRIVATE: DUTY_CYCLE1 STRING "50.00000000"
--- Retrieval info: PRIVATE: EFF_OUTPUT_FREQ_VALUE0 STRING "40.000000"
--- Retrieval info: PRIVATE: EFF_OUTPUT_FREQ_VALUE1 STRING "100.000000"
+-- Retrieval info: PRIVATE: EFF_OUTPUT_FREQ_VALUE0 STRING "25.174999"
+-- Retrieval info: PRIVATE: EFF_OUTPUT_FREQ_VALUE1 STRING "100.694443"
 -- Retrieval info: PRIVATE: EXPLICIT_SWITCHOVER_COUNTER STRING "0"
 -- Retrieval info: PRIVATE: EXT_FEEDBACK_RADIO STRING "0"
 -- Retrieval info: PRIVATE: GLOCKED_COUNTER_EDIT_CHANGED STRING "1"
@@ -261,15 +261,15 @@ END SYN;
 -- Retrieval info: PRIVATE: LVDS_MODE_DATA_RATE STRING "Not Available"
 -- Retrieval info: PRIVATE: LVDS_MODE_DATA_RATE_DIRTY NUMERIC "0"
 -- Retrieval info: PRIVATE: LVDS_PHASE_SHIFT_UNIT0 STRING "deg"
--- Retrieval info: PRIVATE: LVDS_PHASE_SHIFT_UNIT1 STRING "ps"
+-- Retrieval info: PRIVATE: LVDS_PHASE_SHIFT_UNIT1 STRING "deg"
 -- Retrieval info: PRIVATE: MIG_DEVICE_SPEED_GRADE STRING "Any"
 -- Retrieval info: PRIVATE: MIRROR_CLK0 STRING "0"
 -- Retrieval info: PRIVATE: MIRROR_CLK1 STRING "0"
 -- Retrieval info: PRIVATE: MULT_FACTOR0 NUMERIC "1"
 -- Retrieval info: PRIVATE: MULT_FACTOR1 NUMERIC "1"
 -- Retrieval info: PRIVATE: NORMAL_MODE_RADIO STRING "1"
--- Retrieval info: PRIVATE: OUTPUT_FREQ0 STRING "40.00000000"
--- Retrieval info: PRIVATE: OUTPUT_FREQ1 STRING "100.00000000"
+-- Retrieval info: PRIVATE: OUTPUT_FREQ0 STRING "25.17500000"
+-- Retrieval info: PRIVATE: OUTPUT_FREQ1 STRING "100.69444400"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ_MODE0 STRING "1"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ_MODE1 STRING "1"
 -- Retrieval info: PRIVATE: OUTPUT_FREQ_UNIT0 STRING "MHz"
@@ -280,7 +280,7 @@ END SYN;
 -- Retrieval info: PRIVATE: PHASE_SHIFT1 STRING "0.00000000"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_STEP_ENABLED_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT0 STRING "deg"
--- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT1 STRING "ps"
+-- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT1 STRING "deg"
 -- Retrieval info: PRIVATE: PLL_ADVANCED_PARAM_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PLL_ARESET_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PLL_AUTOPLL_CHECK NUMERIC "1"
@@ -291,7 +291,7 @@ END SYN;
 -- Retrieval info: PRIVATE: PLL_PFDENA_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PLL_TARGET_HARCOPY_CHECK NUMERIC "0"
 -- Retrieval info: PRIVATE: PRIMARY_CLK_COMBO STRING "inclk0"
--- Retrieval info: PRIVATE: RECONFIG_FILE STRING "SystemClock.mif"
+-- Retrieval info: PRIVATE: RECONFIG_FILE STRING "clock_gen.mif"
 -- Retrieval info: PRIVATE: SACN_INPUTS_CHECK STRING "0"
 -- Retrieval info: PRIVATE: SCAN_FEATURE_ENABLED STRING "1"
 -- Retrieval info: PRIVATE: SELF_RESET_LOCK_LOSS STRING "0"
@@ -315,13 +315,13 @@ END SYN;
 -- Retrieval info: PRIVATE: ZERO_DELAY_RADIO STRING "0"
 -- Retrieval info: LIBRARY: altera_mf altera_mf.altera_mf_components.all
 -- Retrieval info: CONSTANT: BANDWIDTH_TYPE STRING "AUTO"
--- Retrieval info: CONSTANT: CLK0_DIVIDE_BY NUMERIC "5"
+-- Retrieval info: CONSTANT: CLK0_DIVIDE_BY NUMERIC "2000"
 -- Retrieval info: CONSTANT: CLK0_DUTY_CYCLE NUMERIC "50"
--- Retrieval info: CONSTANT: CLK0_MULTIPLY_BY NUMERIC "4"
+-- Retrieval info: CONSTANT: CLK0_MULTIPLY_BY NUMERIC "1007"
 -- Retrieval info: CONSTANT: CLK0_PHASE_SHIFT STRING "0"
--- Retrieval info: CONSTANT: CLK1_DIVIDE_BY NUMERIC "1"
+-- Retrieval info: CONSTANT: CLK1_DIVIDE_BY NUMERIC "12500000"
 -- Retrieval info: CONSTANT: CLK1_DUTY_CYCLE NUMERIC "50"
--- Retrieval info: CONSTANT: CLK1_MULTIPLY_BY NUMERIC "2"
+-- Retrieval info: CONSTANT: CLK1_MULTIPLY_BY NUMERIC "25173611"
 -- Retrieval info: CONSTANT: CLK1_PHASE_SHIFT STRING "0"
 -- Retrieval info: CONSTANT: COMPENSATE_CLOCK STRING "CLK0"
 -- Retrieval info: CONSTANT: INCLK0_INPUT_FREQUENCY NUMERIC "20000"
@@ -383,11 +383,11 @@ END SYN;
 -- Retrieval info: CONNECT: c0 0 0 0 0 @clk 0 0 1 0
 -- Retrieval info: CONNECT: c1 0 0 0 0 @clk 0 0 1 1
 -- Retrieval info: CONNECT: locked 0 0 0 0 @locked 0 0 0 0
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock.vhd TRUE
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock.ppf TRUE
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock.inc FALSE
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock.cmp TRUE
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock.bsf TRUE
--- Retrieval info: GEN_FILE: TYPE_NORMAL SystemClock_inst.vhd FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen.vhd TRUE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen.ppf TRUE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen.inc FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen.cmp FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen.bsf FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL clock_gen_inst.vhd FALSE
 -- Retrieval info: LIB_FILE: altera_mf
 -- Retrieval info: CBX_MODULE_PREFIX: ON

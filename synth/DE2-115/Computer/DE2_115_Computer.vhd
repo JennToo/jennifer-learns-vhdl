@@ -171,7 +171,7 @@ begin
     HEX6 <= (others => '1');
     HEX7 <= (others => '1');
 
-    pll_0: entity work.SystemClock
+    pll_0: entity work.clock_gen
     port map (
         inclk0 => CLOCK_50,
         c0     => vga_input_clk,
@@ -189,21 +189,7 @@ begin
     VGA_VS      <= vsync when SW(17) else '1';
 
     vga_0: entity work.vga
-    generic map (
-        -- Timing info from http://tinyvga.com/vga-timing/800x600@60Hz
-        horizontal_pixels => 800,
-        vertical_pixels   => 600,
-
-        hsync_front_porch => 40,
-        hsync_sync_pulse  => 128,
-        hsync_back_porch  => 88,
-        hsync_polarity    => '0',
-
-        vsync_front_porch => 1,
-        vsync_sync_pulse  => 4,
-        vsync_back_porch  => 23,
-        vsync_polarity    => '0'
-    )
+    -- Using default timing for 640x480@60Hz
     port map (
         clk       => vga_input_clk,
         arst      => KEY(0),
