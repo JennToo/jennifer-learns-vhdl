@@ -102,6 +102,7 @@ SOURCES := \
 	src/pkg/math.vhd \
 	src/vga_fifo_reader.vhd \
 	src/vga.vhd \
+	test/sim_fifo.vhd \
 	test/tb_vga.vhd
 $(eval $(call DEFINE_SIMULATION,tb_vga))
 
