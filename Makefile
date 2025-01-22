@@ -122,5 +122,11 @@ SOURCES  := \
 	synth/DE2-115/Computer/$(PROJECT).sdc
 $(eval $(call DEFINE_QUARTUS_BITSTREAM,de2-115_computer))
 
+SOURCES := \
+	src/pkg/math.vhd \
+	src/uart_rx.vhd \
+	test/tb_uart_rx.vhd
+$(eval $(call DEFINE_SIMULATION,tb_uart_rx))
+
 clean:
 	rm -rf build
