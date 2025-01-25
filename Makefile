@@ -128,5 +128,15 @@ SOURCES := \
 	test/tb_uart_rx.vhd
 $(eval $(call DEFINE_SIMULATION,tb_uart_rx))
 
+build/render: model/render.c
+	clang-format -i $<
+	gcc -g -std=c17 -fsanitize=address,undefined -Wall $< -o $@ -lSDL2
+
+.PHONY: render
+render: build/render
+	ASAN_OPTIONS=detect_leaks=0 $<
+
+all: build/render
+
 clean:
 	rm -rf build
