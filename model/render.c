@@ -246,6 +246,31 @@ void gpu_report_duration(struct gpu_t *gpu, const char *message,
   printf("Framebuffer memory bandwidth utilization: %f%%\n", percentage);
 }
 
+struct screen_triangle_t test_triangle1 = {
+    .x0 = INTERNAL_WIDTH / 2,
+    .y0 = 25,
+    .x1 = 25,
+    .y1 = INTERNAL_HEIGHT - 25,
+    .x2 = INTERNAL_WIDTH - 25,
+    .y2 = INTERNAL_HEIGHT / 2,
+};
+struct screen_triangle_t test_triangle2 = {
+    .x0 = 25,
+    .y0 = 25,
+    .x1 = 25,
+    .y1 = 100,
+    .x2 = 100,
+    .y2 = 100,
+};
+struct screen_triangle_t test_triangle3 = {
+    .x0 = 100,
+    .y0 = 25,
+    .x1 = 25,
+    .y1 = 100,
+    .x2 = 175,
+    .y2 = 100,
+};
+
 int main(int argc, char **argv) {
   if (SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
     printf("SDL_Init failed: %s", SDL_GetError());
@@ -290,13 +315,7 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  struct screen_triangle_t test_triangle = {.x0 = INTERNAL_WIDTH / 2,
-                                            .y0 = 25,
-                                            .x1 = 25,
-                                            .y1 = INTERNAL_HEIGHT - 25,
-                                            .x2 = INTERNAL_WIDTH - 25,
-                                            .y2 = INTERNAL_HEIGHT / 2};
-  gpu_draw_triangle(&gpu, &test_triangle, 0xCCCC);
+  gpu_draw_triangle(&gpu, &test_triangle3, 0xCCCC);
 
   bool end = false;
   bool new_frame = true;
