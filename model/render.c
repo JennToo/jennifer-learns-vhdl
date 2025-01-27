@@ -19,30 +19,59 @@ const int INTERNAL_WIDTH = 320;
 const int INTERNAL_HEIGHT = 240;
 const int FRAMEBUFFER_BYTES = 2 * INTERNAL_WIDTH * INTERNAL_HEIGHT;
 const int SYSTEM_CLOCK_FREQUENCY = 100 * 1000 * 1000;
+const uint16_t DEBUG_PIXEL_COLOR = 0x07F5;
 
+struct perf_counters_t {
+  uint64_t cycle;
+  uint64_t framebuffer_writes;
+};
 struct clear_t {
-  uint64_t start_cycle;
+  struct perf_counters_t counters;
   uint16_t color;
   int x;
   int y;
   bool active;
 };
 
+// Triangle with screen-space coordinates
+struct screen_triangle_t {
+  int16_t x0, y0;
+  int16_t x1, y1;
+  int16_t x2, y2;
+};
+
+struct triangle_rasterizer_t {
+  struct screen_triangle_t triangle;
+  struct screen_triangle_t deltas;
+  int32_t e0, e1, e2;
+  int16_t cursor_x, cursor_y;
+  bool forward_traversal;
+  int16_t start_x;
+  int16_t max_x, max_y;
+  uint16_t color;
+
+  struct perf_counters_t counters;
+  bool active;
+};
+
 struct gpu_t {
   uint16_t *framebuffer;
-
   struct clear_t clear;
-
-  uint64_t cycle_count;
-  uint64_t framebuffer_writes;
+  struct triangle_rasterizer_t rasterizer;
+  struct perf_counters_t counters;
 };
 
 void gpu_init(struct gpu_t *gpu);
 void gpu_run_cycle(struct gpu_t *gpu);
+void gpu_triangle_cycle(struct gpu_t *gpu,
+                        struct triangle_rasterizer_t *rasterizer);
 void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color);
+void gpu_framebuffer_debug_write(struct gpu_t *gpu, int x, int y);
 void gpu_start_clear(struct gpu_t *gpu, uint16_t color);
+void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
+                       uint16_t color);
 void gpu_report_duration(struct gpu_t *gpu, const char *message,
-                         uint64_t start_cycle);
+                         struct perf_counters_t *snapshot);
 
 void gpu_init(struct gpu_t *gpu) {
   gpu->framebuffer = malloc(FRAMEBUFFER_BYTES);
@@ -59,20 +88,21 @@ void gpu_init(struct gpu_t *gpu) {
     }
   }
 
-  gpu->cycle_count = 0;
+  gpu->counters.cycle = 0;
 
   gpu->clear.active = false;
+  gpu->rasterizer.active = false;
 }
 
 void gpu_run_cycle(struct gpu_t *gpu) {
-  gpu->cycle_count += 1;
+  gpu->counters.cycle += 1;
   if (gpu->clear.active) {
     gpu_framebuffer_write(gpu, gpu->clear.x, gpu->clear.y, gpu->clear.color);
     if (gpu->clear.x == INTERNAL_WIDTH - 1) {
       gpu->clear.x = 0;
       if (gpu->clear.y == INTERNAL_HEIGHT - 1) {
         gpu->clear.active = false;
-        gpu_report_duration(gpu, "clear", gpu->clear.start_cycle);
+        gpu_report_duration(gpu, "clear", &gpu->clear.counters);
       } else {
         gpu->clear.y += 1;
       }
@@ -80,11 +110,57 @@ void gpu_run_cycle(struct gpu_t *gpu) {
       gpu->clear.x += 1;
     }
   }
+  gpu_triangle_cycle(gpu, &gpu->rasterizer);
+}
+
+// Algorithm based on:
+//   Pineda, Juan "A Parallel Algorithm for Polygon Rasterization"
+//   Computer Graphics, Volume 22, Number 4, August 1988
+void gpu_triangle_cycle(struct gpu_t *gpu,
+                        struct triangle_rasterizer_t *rasterizer) {
+  if (!rasterizer->active) {
+    return;
+  }
+  gpu_framebuffer_debug_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y);
+  if (rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0) {
+    gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
+                          rasterizer->color);
+  }
+  if ((rasterizer->cursor_x == rasterizer->max_x &&
+       rasterizer->forward_traversal) ||
+      (rasterizer->cursor_x == rasterizer->start_x &&
+       !rasterizer->forward_traversal)) {
+    rasterizer->forward_traversal = !rasterizer->forward_traversal;
+    if (rasterizer->cursor_y == rasterizer->max_y) {
+      rasterizer->active = false;
+      gpu_report_duration(gpu, "rasterizer", &rasterizer->counters);
+    } else {
+      rasterizer->e0 -= rasterizer->deltas.x0;
+      rasterizer->e1 -= rasterizer->deltas.x1;
+      rasterizer->e2 -= rasterizer->deltas.x2;
+      rasterizer->cursor_y += 1;
+    }
+  } else {
+    if (rasterizer->forward_traversal) {
+      rasterizer->e0 += rasterizer->deltas.y0;
+      rasterizer->e1 += rasterizer->deltas.y1;
+      rasterizer->e2 += rasterizer->deltas.y2;
+      rasterizer->cursor_x += 1;
+    } else {
+      rasterizer->e0 -= rasterizer->deltas.y0;
+      rasterizer->e1 -= rasterizer->deltas.y1;
+      rasterizer->e2 -= rasterizer->deltas.y2;
+      rasterizer->cursor_x -= 1;
+    }
+  }
 }
 
 void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color) {
   gpu->framebuffer[y * INTERNAL_WIDTH + x] = color;
-  gpu->framebuffer_writes += 1;
+  gpu->counters.framebuffer_writes += 1;
+}
+void gpu_framebuffer_debug_write(struct gpu_t *gpu, int x, int y) {
+  gpu->framebuffer[y * INTERNAL_WIDTH + x] = DEBUG_PIXEL_COLOR;
 }
 
 void gpu_start_clear(struct gpu_t *gpu, uint16_t color) {
@@ -92,16 +168,82 @@ void gpu_start_clear(struct gpu_t *gpu, uint16_t color) {
   gpu->clear.y = 0;
   gpu->clear.color = color;
   gpu->clear.active = true;
-  gpu->clear.start_cycle = gpu->cycle_count;
+  gpu->clear.counters = gpu->counters;
+}
+
+void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
+                       uint16_t color) {
+  struct triangle_rasterizer_t *rasterizer = &gpu->rasterizer;
+  rasterizer->triangle = *triangle;
+  rasterizer->active = true;
+  rasterizer->color = color;
+
+  rasterizer->deltas.x0 = triangle->x0 - triangle->x2;
+  rasterizer->deltas.x1 = triangle->x1 - triangle->x0;
+  rasterizer->deltas.x2 = triangle->x2 - triangle->x1;
+
+  rasterizer->deltas.y0 = triangle->y0 - triangle->y2;
+  rasterizer->deltas.y1 = triangle->y1 - triangle->y0;
+  rasterizer->deltas.y2 = triangle->y2 - triangle->y1;
+
+  // TODO: Use a more efficient traversal algorithm
+  rasterizer->cursor_x = triangle->x0;
+  if (triangle->x1 < rasterizer->cursor_x) {
+    rasterizer->cursor_x = triangle->x1;
+  }
+  if (triangle->x2 < rasterizer->cursor_x) {
+    rasterizer->cursor_x = triangle->x2;
+  }
+  rasterizer->cursor_y = triangle->y0;
+  if (triangle->y1 < rasterizer->cursor_y) {
+    rasterizer->cursor_y = triangle->y1;
+  }
+  if (triangle->y2 < rasterizer->cursor_y) {
+    rasterizer->cursor_y = triangle->y2;
+  }
+  rasterizer->start_x = rasterizer->cursor_x;
+  rasterizer->max_x = triangle->x0;
+  if (triangle->x1 > rasterizer->cursor_x) {
+    rasterizer->max_x = triangle->x1;
+  }
+  if (triangle->x2 > rasterizer->cursor_x) {
+    rasterizer->max_x = triangle->x2;
+  }
+  rasterizer->max_y = triangle->y0;
+  if (triangle->y1 > rasterizer->max_y) {
+    rasterizer->max_y = triangle->y1;
+  }
+  if (triangle->y2 > rasterizer->max_y) {
+    rasterizer->max_y = triangle->y2;
+  }
+
+  // TODO: model these multiplies, they will take up cycles
+  rasterizer->e0 =
+      ((int32_t)(rasterizer->cursor_x - triangle->x0)) * rasterizer->deltas.y0 -
+      ((int32_t)(rasterizer->cursor_y - triangle->y0)) * rasterizer->deltas.x0;
+  rasterizer->e1 =
+      ((int32_t)(rasterizer->cursor_x - triangle->x1)) * rasterizer->deltas.y1 -
+      ((int32_t)(rasterizer->cursor_y - triangle->y1)) * rasterizer->deltas.x1;
+  rasterizer->e2 =
+      ((int32_t)(rasterizer->cursor_x - triangle->x2)) * rasterizer->deltas.y2 -
+      ((int32_t)(rasterizer->cursor_y - triangle->y2)) * rasterizer->deltas.x2;
+
+  rasterizer->forward_traversal = true;
+
+  rasterizer->counters = gpu->counters;
 }
 
 void gpu_report_duration(struct gpu_t *gpu, const char *message,
-                         uint64_t start_cycle) {
-  uint64_t cycles = gpu->cycle_count - start_cycle;
+                         struct perf_counters_t *snapshot) {
+  uint64_t cycles = gpu->counters.cycle - snapshot->cycle;
   double us = (double)(cycles) * 1000000.0 / (double)(SYSTEM_CLOCK_FREQUENCY);
   double percentage = us / 16666.66 * 100;
   printf("%s took %" PRIu64 " cycles (%f us; %f %% of 60Hz frame)\n", message,
          cycles, us, percentage);
+  uint64_t framebuffer_writes =
+      gpu->counters.framebuffer_writes - snapshot->framebuffer_writes;
+  percentage = (double)(framebuffer_writes) / (double)(cycles) * 100;
+  printf("Framebuffer memory bandwidth utilization: %f%%\n", percentage);
 }
 
 int main(int argc, char **argv) {
@@ -148,7 +290,13 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  gpu_start_clear(&gpu, 0x07F5);
+  struct screen_triangle_t test_triangle = {.x0 = INTERNAL_WIDTH / 2,
+                                            .y0 = 25,
+                                            .x1 = 25,
+                                            .y1 = INTERNAL_HEIGHT - 25,
+                                            .x2 = INTERNAL_WIDTH - 25,
+                                            .y2 = INTERNAL_HEIGHT / 2};
+  gpu_draw_triangle(&gpu, &test_triangle, 0xCCCC);
 
   bool end = false;
   bool new_frame = true;

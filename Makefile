@@ -130,7 +130,7 @@ $(eval $(call DEFINE_SIMULATION,tb_uart_rx))
 
 build/render: model/render.c
 	clang-format -i $<
-	gcc -g -std=c17 -fsanitize=address,undefined -Wall $< -o $@ -lSDL2
+	gcc -O3 -g -std=c17 -fsanitize=address,undefined -Wall $< -o $@ -lSDL2
 
 .PHONY: render
 render: build/render
