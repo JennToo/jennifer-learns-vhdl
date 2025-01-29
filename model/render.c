@@ -19,7 +19,6 @@ const int INTERNAL_WIDTH = 320;
 const int INTERNAL_HEIGHT = 240;
 const int FRAMEBUFFER_BYTES = 2 * INTERNAL_WIDTH * INTERNAL_HEIGHT;
 const int SYSTEM_CLOCK_FREQUENCY = 100 * 1000 * 1000;
-const uint16_t DEBUG_PIXEL_COLOR = 0x07F5;
 
 struct perf_counters_t {
   uint64_t cycle;
@@ -75,18 +74,14 @@ void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
 void gpu_report_duration(struct gpu_t *gpu, const char *message,
                          struct perf_counters_t *snapshot);
 
+uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
+
 void gpu_init(struct gpu_t *gpu) {
   gpu->framebuffer = malloc(FRAMEBUFFER_BYTES);
 
-  // Temporary pattern so I know the framebuffer is being draw correctly on the
-  // screen
   for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
     for (int x = 0; x < INTERNAL_WIDTH; ++x) {
-      if (((x + y) & 1) == 0) {
-        gpu->framebuffer[y * INTERNAL_WIDTH + x] = 0xFFFF;
-      } else {
-        gpu->framebuffer[y * INTERNAL_WIDTH + x] = 0;
-      }
+      gpu->framebuffer[y * INTERNAL_WIDTH + x] = rgb565(40, 40, 40);
     }
   }
 
@@ -188,7 +183,7 @@ void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color) {
   gpu->counters.framebuffer_writes += 1;
 }
 void gpu_framebuffer_debug_write(struct gpu_t *gpu, int x, int y) {
-  gpu->framebuffer[y * INTERNAL_WIDTH + x] = DEBUG_PIXEL_COLOR;
+  gpu->framebuffer[y * INTERNAL_WIDTH + x] = rgb565(64, 200, 0);
 }
 
 void gpu_start_clear(struct gpu_t *gpu, uint16_t color) {
@@ -279,6 +274,11 @@ void gpu_report_duration(struct gpu_t *gpu, const char *message,
   printf("Framebuffer memory bandwidth utilization: %f%%\n", percentage);
 }
 
+uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
+  return ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) |
+         ((b & 0b11111000) >> 3);
+}
+
 struct screen_triangle_t test_triangle1 = {
     .x0 = INTERNAL_WIDTH / 2,
     .y0 = 25,
@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  gpu_draw_triangle(&gpu, &test_triangle1, 0xCCCC);
+  gpu_draw_triangle(&gpu, &test_triangle1, rgb565(255, 128, 0));
 
   bool end = false;
   bool new_frame = true;
