@@ -56,6 +56,7 @@ struct triangle_rasterizer_t {
 
 struct gpu_t {
   uint16_t *framebuffer;
+  uint16_t *debug_framebuffer;
   struct clear_t clear;
   struct triangle_rasterizer_t rasterizer;
   struct perf_counters_t counters;
@@ -77,7 +78,9 @@ uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 
 void gpu_init(struct gpu_t *gpu) {
   gpu->framebuffer = malloc(FRAMEBUFFER_BYTES);
+  gpu->debug_framebuffer = malloc(FRAMEBUFFER_BYTES);
 
+  bzero(gpu->debug_framebuffer, FRAMEBUFFER_BYTES);
   for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
     for (int x = 0; x < INTERNAL_WIDTH; ++x) {
       gpu->framebuffer[y * INTERNAL_WIDTH + x] = rgb565(40, 40, 40);
@@ -182,7 +185,7 @@ void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color) {
   gpu->counters.framebuffer_writes += 1;
 }
 void gpu_framebuffer_debug_write(struct gpu_t *gpu, int x, int y) {
-  gpu->framebuffer[y * INTERNAL_WIDTH + x] = rgb565(64, 200, 0);
+  gpu->debug_framebuffer[y * INTERNAL_WIDTH + x] = rgb565(64, 200, 0);
 }
 
 void gpu_start_clear(struct gpu_t *gpu, uint16_t color) {
@@ -344,10 +347,12 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  gpu_draw_triangle(&gpu, &test_triangle4, rgb565(255, 128, 0));
+  gpu_draw_triangle(&gpu, &test_triangle1, rgb565(255, 128, 0));
 
   bool end = false;
   bool new_frame = true;
+  bool show_debug = false;
+
   while (!end) {
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
@@ -369,6 +374,10 @@ int main(int argc, char **argv) {
           }
           new_frame = true;
           break;
+        case SDLK_d:
+          show_debug = !show_debug;
+          new_frame = true;
+          break;
         default:
           break;
         }
@@ -376,10 +385,22 @@ int main(int argc, char **argv) {
     }
 
     if (new_frame) {
-      void *texture_memory = NULL;
+      uint16_t *texture_memory = NULL;
       int _unused;
-      SDL_LockTexture(framebuffer_texture, NULL, &texture_memory, &_unused);
+      SDL_LockTexture(framebuffer_texture, NULL, (void **)&texture_memory,
+                      &_unused);
       memcpy(texture_memory, gpu.framebuffer, FRAMEBUFFER_BYTES);
+      if (show_debug) {
+        for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
+          for (int x = 0; x < INTERNAL_WIDTH; ++x) {
+            int index = y * INTERNAL_WIDTH + x;
+            uint16_t value = gpu.debug_framebuffer[index];
+            if (value != 0) {
+              texture_memory[index] = value;
+            }
+          }
+        }
+      }
       SDL_UnlockTexture(framebuffer_texture);
 
       SDL_RenderClear(renderer);
