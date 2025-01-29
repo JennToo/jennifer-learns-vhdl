@@ -46,6 +46,8 @@ struct triangle_rasterizer_t {
   int32_t e0, e1, e2;
   int16_t cursor_x, cursor_y;
   bool forward_traversal;
+  bool found_edge;
+  bool previous_e;
   int16_t start_x;
   int16_t max_x, max_y;
   uint16_t color;
@@ -122,25 +124,37 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
     return;
   }
   gpu_framebuffer_debug_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y);
-  if (rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0) {
-    gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
-                          rasterizer->color);
-  }
-  if ((rasterizer->cursor_x == rasterizer->max_x &&
-       rasterizer->forward_traversal) ||
-      (rasterizer->cursor_x == rasterizer->start_x &&
-       !rasterizer->forward_traversal)) {
-    rasterizer->forward_traversal = !rasterizer->forward_traversal;
-    if (rasterizer->cursor_y == rasterizer->max_y) {
-      rasterizer->active = false;
-      gpu_report_duration(gpu, "rasterizer", &rasterizer->counters);
-    } else {
-      rasterizer->e0 -= rasterizer->deltas.x0;
-      rasterizer->e1 -= rasterizer->deltas.x1;
-      rasterizer->e2 -= rasterizer->deltas.x2;
-      rasterizer->cursor_y += 1;
+
+  bool advance_x = false;
+  bool advance_y = false;
+  bool next_e =
+      (rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0);
+  if (!rasterizer->found_edge) {
+    // outside - we've found the first edge
+    if (next_e != rasterizer->previous_e) {
+      rasterizer->found_edge = true;
+
+      // If we just left the triangle, turn around
+      if (!next_e) {
+        rasterizer->forward_traversal = !rasterizer->forward_traversal;
+      }
     }
+    advance_x = true;
+    advance_y = false;
   } else {
+    // outside - we've found the second edge
+    if (!next_e) {
+      advance_x = false;
+      advance_y = true;
+    } else {
+      // inside - keep drawing
+      advance_x = true;
+      advance_y = false;
+      gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
+                            rasterizer->color);
+    }
+  }
+  if (advance_x) {
     if (rasterizer->forward_traversal) {
       rasterizer->e0 += rasterizer->deltas.y0;
       rasterizer->e1 += rasterizer->deltas.y1;
@@ -153,6 +167,20 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
       rasterizer->cursor_x -= 1;
     }
   }
+  if (advance_y) {
+    rasterizer->found_edge = false;
+    rasterizer->forward_traversal = !rasterizer->forward_traversal;
+    if (rasterizer->cursor_y == rasterizer->max_y) {
+      rasterizer->active = false;
+      gpu_report_duration(gpu, "rasterizer", &rasterizer->counters);
+    } else {
+      rasterizer->e0 -= rasterizer->deltas.x0;
+      rasterizer->e1 -= rasterizer->deltas.x1;
+      rasterizer->e2 -= rasterizer->deltas.x2;
+      rasterizer->cursor_y += 1;
+    }
+  }
+  rasterizer->previous_e = next_e;
 }
 
 void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color) {
@@ -229,6 +257,11 @@ void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
       ((int32_t)(rasterizer->cursor_y - triangle->y2)) * rasterizer->deltas.x2;
 
   rasterizer->forward_traversal = true;
+  // If we start "inside", we must be starting at a min point
+  // maybe it is cleaner to just check if our cursor matches a point
+  rasterizer->found_edge =
+      rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0;
+  rasterizer->previous_e = rasterizer->found_edge;
 
   rasterizer->counters = gpu->counters;
 }
@@ -315,7 +348,7 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  gpu_draw_triangle(&gpu, &test_triangle3, 0xCCCC);
+  gpu_draw_triangle(&gpu, &test_triangle1, 0xCCCC);
 
   bool end = false;
   bool new_frame = true;
