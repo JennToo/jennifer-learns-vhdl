@@ -291,6 +291,14 @@ struct screen_triangle_t test_triangle3 = {
     .x2 = 175,
     .y2 = 100,
 };
+struct screen_triangle_t test_triangle4 = {
+    .x0 = 100,
+    .y0 = 25,
+    .x1 = 25,
+    .y1 = 25,
+    .x2 = 35,
+    .y2 = 100,
+};
 
 int main(int argc, char **argv) {
   if (SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
@@ -336,7 +344,7 @@ int main(int argc, char **argv) {
   screen_rect.h = INTERNAL_HEIGHT;
   screen_rect.w = INTERNAL_WIDTH;
 
-  gpu_draw_triangle(&gpu, &test_triangle1, rgb565(255, 128, 0));
+  gpu_draw_triangle(&gpu, &test_triangle4, rgb565(255, 128, 0));
 
   bool end = false;
   bool new_frame = true;
