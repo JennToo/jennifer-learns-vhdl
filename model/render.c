@@ -47,8 +47,7 @@ struct triangle_rasterizer_t {
   bool forward_traversal;
   bool found_edge;
   bool previous_e;
-  int16_t start_x;
-  int16_t max_x, max_y;
+  int16_t max_y;
   uint16_t color;
 
   struct perf_counters_t counters;
@@ -209,29 +208,18 @@ void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
   rasterizer->deltas.y1 = triangle->y1 - triangle->y0;
   rasterizer->deltas.y2 = triangle->y2 - triangle->y1;
 
-  // TODO: Use a more efficient traversal algorithm
   rasterizer->cursor_x = triangle->x0;
-  if (triangle->x1 < rasterizer->cursor_x) {
-    rasterizer->cursor_x = triangle->x1;
-  }
-  if (triangle->x2 < rasterizer->cursor_x) {
-    rasterizer->cursor_x = triangle->x2;
-  }
   rasterizer->cursor_y = triangle->y0;
+
   if (triangle->y1 < rasterizer->cursor_y) {
+    rasterizer->cursor_x = triangle->x1;
     rasterizer->cursor_y = triangle->y1;
   }
   if (triangle->y2 < rasterizer->cursor_y) {
+    rasterizer->cursor_x = triangle->x2;
     rasterizer->cursor_y = triangle->y2;
   }
-  rasterizer->start_x = rasterizer->cursor_x;
-  rasterizer->max_x = triangle->x0;
-  if (triangle->x1 > rasterizer->cursor_x) {
-    rasterizer->max_x = triangle->x1;
-  }
-  if (triangle->x2 > rasterizer->cursor_x) {
-    rasterizer->max_x = triangle->x2;
-  }
+
   rasterizer->max_y = triangle->y0;
   if (triangle->y1 > rasterizer->max_y) {
     rasterizer->max_y = triangle->y1;
