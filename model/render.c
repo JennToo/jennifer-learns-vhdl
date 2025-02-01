@@ -1,3 +1,6 @@
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_keycode.h>
@@ -17,7 +20,8 @@ const int WINDOW_WIDTH = 960;
 const int WINDOW_HEIGHT = 720;
 const int INTERNAL_WIDTH = 320;
 const int INTERNAL_HEIGHT = 240;
-const int FRAMEBUFFER_BYTES = 2 * INTERNAL_WIDTH * INTERNAL_HEIGHT;
+const int FRAMEBUFFER_PIXELS = INTERNAL_WIDTH * INTERNAL_HEIGHT;
+const int FRAMEBUFFER_BYTES = 2 * FRAMEBUFFER_PIXELS;
 const int SYSTEM_CLOCK_FREQUENCY = 100 * 1000 * 1000;
 
 struct perf_counters_t {
@@ -75,6 +79,7 @@ void gpu_report_duration(struct gpu_t *gpu, const char *message,
                          struct perf_counters_t *snapshot);
 
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
+void rgb565_to_rgb888(uint16_t color, uint8_t *out);
 
 void gpu_init(struct gpu_t *gpu) {
   gpu->framebuffer = malloc(FRAMEBUFFER_BYTES);
@@ -270,9 +275,33 @@ void gpu_report_duration(struct gpu_t *gpu, const char *message,
   printf("Framebuffer memory bandwidth utilization: %f%%\n", percentage);
 }
 
+void gpu_save_snapshot(struct gpu_t *gpu) {
+  uint8_t *data = malloc(3 * FRAMEBUFFER_PIXELS);
+  uint8_t *cursor = data;
+  for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
+    for (int x = 0; x < INTERNAL_WIDTH; ++x) {
+      uint16_t color = gpu->framebuffer[y * INTERNAL_WIDTH + x];
+      rgb565_to_rgb888(color, cursor);
+      cursor += 3;
+    }
+  }
+  stbi_write_png("build/snapshot.png", INTERNAL_WIDTH, INTERNAL_HEIGHT, 3, data,
+                 3 * INTERNAL_WIDTH);
+  free(data);
+}
+
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) |
          ((b & 0b11111000) >> 3);
+}
+
+void rgb565_to_rgb888(uint16_t color, uint8_t *out) {
+  uint8_t r = (color >> 8) & 0b11111000;
+  uint8_t g = (color >> 3) & 0b11111100;
+  uint8_t b = (color << 3) & 0b11111000;
+  out[0] = r;
+  out[1] = g;
+  out[2] = b;
 }
 
 struct screen_triangle_t test_triangle1 = {
@@ -368,6 +397,9 @@ int main(int argc, char **argv) {
         switch (event.key.keysym.sym) {
         case SDLK_ESCAPE:
           end = true;
+          break;
+        case SDLK_p:
+          gpu_save_snapshot(&gpu);
           break;
         case SDLK_s:
           if (event.key.keysym.mod & KMOD_SHIFT) {
