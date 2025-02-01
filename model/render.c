@@ -124,32 +124,37 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
 
   bool advance_x = false;
   bool advance_y = false;
-  bool next_e =
+  bool current_e =
       (rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0);
+  bool draw_here = false;
   if (!rasterizer->found_edge) {
     // outside - we've found the first edge
-    if (next_e != rasterizer->previous_e) {
+    if (current_e != rasterizer->previous_e) {
       rasterizer->found_edge = true;
 
       // If we just left the triangle, turn around
-      if (!next_e) {
+      if (!current_e) {
         rasterizer->forward_traversal = !rasterizer->forward_traversal;
       }
+      draw_here = current_e;
     }
     advance_x = true;
     advance_y = false;
   } else {
     // outside - we've found the second edge
-    if (!next_e) {
+    if (!current_e) {
       advance_x = false;
       advance_y = true;
     } else {
       // inside - keep drawing
       advance_x = true;
       advance_y = false;
-      gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
-                            rasterizer->color);
     }
+    draw_here = current_e;
+  }
+  if (draw_here) {
+    gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
+                          rasterizer->color);
   }
   if (advance_x) {
     if (rasterizer->forward_traversal) {
@@ -177,7 +182,7 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
       rasterizer->cursor_y += 1;
     }
   }
-  rasterizer->previous_e = next_e;
+  rasterizer->previous_e = current_e;
 }
 
 void gpu_framebuffer_write(struct gpu_t *gpu, int x, int y, uint16_t color) {
@@ -271,12 +276,12 @@ uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 struct screen_triangle_t test_triangle1 = {
-    .x0 = INTERNAL_WIDTH / 2,
+    .x0 = 160,
     .y0 = 25,
     .x1 = 25,
-    .y1 = INTERNAL_HEIGHT - 25,
-    .x2 = INTERNAL_WIDTH - 25,
-    .y2 = INTERNAL_HEIGHT / 2,
+    .y1 = 215,
+    .x2 = 295,
+    .y2 = 120,
 };
 struct screen_triangle_t test_triangle2 = {
     .x0 = 25,
@@ -309,9 +314,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  SDL_Window *window =
-      SDL_CreateWindow("render", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                       WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI);
+  SDL_Window *window = SDL_CreateWindow(
+      "render", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH,
+      WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_MAXIMIZED);
   if (window == NULL) {
     printf("SDL_CreateWindow failed: %s", SDL_GetError());
     return 1;
