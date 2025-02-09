@@ -1,3 +1,6 @@
+library std;
+use std.env.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -32,9 +35,9 @@ architecture behav of tb_sdram_memtester is
 
     signal fault  : std_logic;
     signal enable : std_logic;
-
-    signal stop : boolean := false;
 begin
+    clk <= not clk after CLK_PERIOD / 2;
+
     sim_sdram_0: entity work.sim_sdram
     generic map(
         required_power_on_wait => powerup_time,
@@ -95,29 +98,18 @@ begin
         fault => fault
     );
 
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
-
-    enable <= '1' when stop = false else '0';
-
     stimulus: process
     begin
-        arst <= '0';
+        enable <= '0';
+        arst   <= '0';
         wait for 1 ns;
-        arst <= '1';
+        arst   <= '1';
+        enable <= '1';
 
         assert fault = '0' report "Memory fault" severity error;
         wait until fault = '1' for 3 * t_ref;
         assert fault = '0' report "Memory fault" severity error;
 
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behav;

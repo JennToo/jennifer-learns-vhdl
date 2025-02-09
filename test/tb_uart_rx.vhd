@@ -1,3 +1,6 @@
+library std;
+use std.env.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -11,17 +14,8 @@ architecture behave of tb_uart_rx is
     signal clk  : std_logic;
     signal arst : std_logic;
 
-    signal stop : boolean := false;
 begin
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
+    clk <= not clk after CLK_PERIOD / 2;
 
     stimulus: process
     begin
@@ -29,7 +23,6 @@ begin
         wait for 1 ns;
         arst <= '1';
 
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behave;

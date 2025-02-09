@@ -1,3 +1,6 @@
+library std;
+use std.env.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 
@@ -37,9 +40,9 @@ architecture behave of tb_vga is
     signal r_fifo_request : std_logic;
 
     signal blanking_soon : std_logic;
-
-    signal stop : boolean := false;
 begin
+    clk <= not clk after CLK_PERIOD / 2;
+
     vga_0: entity work.vga
     port map (
         clk       => clk,
@@ -94,16 +97,6 @@ begin
         end if;
     end process sync_verification;
 
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
-
     stimulus: process
     begin
         arst <= '0';
@@ -113,7 +106,6 @@ begin
         -- A bit over 2 frames
         wait for 35 ms;
 
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behave;

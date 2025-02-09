@@ -1,5 +1,8 @@
+library std;
+use std.env.all;
+
 library ieee;
-   use ieee.std_logic_1164.all;
+use ieee.std_logic_1164.all;
 
 entity tb_lfsr is
 end tb_lfsr;
@@ -11,9 +14,9 @@ architecture behave of tb_lfsr is
     signal arst        : std_logic;
     signal value       : std_logic_vector(15 downto 0);
     signal clk_counter : integer := 0;
-
-    signal stop : boolean := false;
 begin
+    clk <= not clk after CLK_PERIOD / 2;
+
     lfsr_16_0: entity work.lfsr_16
     generic map (
         seed => x"ACE1"
@@ -23,17 +26,6 @@ begin
         arst  => arst,
         value => value
     );
-
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            clk_counter <= clk_counter + 1;
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
 
     stimulus: process
         variable clk_snapshot : integer;
@@ -61,7 +53,6 @@ begin
             report "repeated at unexpected period " & integer'image(clk_counter - clk_snapshot)
             severity error;
 
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behave;

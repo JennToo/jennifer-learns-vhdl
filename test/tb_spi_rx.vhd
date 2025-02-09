@@ -1,6 +1,9 @@
+library std;
+use std.env.all;
+
 library ieee;
-   use ieee.std_logic_1164.all;
-   use ieee.numeric_std.all;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity tb_spi_rx is
 end tb_spi_rx;
@@ -16,9 +19,9 @@ architecture behav of tb_spi_rx is
     signal spi_mosi   : std_logic;
     signal data_out   : std_logic_vector(7 downto 0);
     signal data_ready : std_logic;
-
-    signal stop : boolean := false;
 begin
+    clk <= not clk after CLK_PERIOD / 2;
+
     spi_rx_0: entity work.spi_rx port map (
         clk        => clk,
         srst       => srst,
@@ -30,16 +33,6 @@ begin
     );
 
     enable <= '1';
-
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
 
     stimulus: process begin
         srst <= '0';
@@ -81,7 +74,6 @@ begin
         wait for SPI_CLK_PERIOD / 2;
         assert data_ready = '0' report "data should not be ready anymore" severity error;
 
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behav;

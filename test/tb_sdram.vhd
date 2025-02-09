@@ -1,6 +1,10 @@
+library std;
+use std.env.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+
 use work.test_util.all;
 use work.axi.all;
 
@@ -32,9 +36,9 @@ architecture behav of tb_sdram is
     signal dq_o   : std_logic_vector(15 downto 0);
     signal dq_oe : std_logic;
     signal arst : std_logic;
-
-    signal stop : boolean := false;
 begin
+    clk <= not clk after CLK_PERIOD / 2;
+
     sim_sdram_0: entity work.sim_sdram
     generic map(
         required_power_on_wait => powerup_time,
@@ -81,16 +85,6 @@ begin
         dq_oe         => dq_oe
     );
 
-    clocker: process begin
-        while not stop loop
-            clk <= '0';
-            wait for CLK_PERIOD / 2;
-            clk <= '1';
-            wait for CLK_PERIOD / 2;
-        end loop;
-        wait;
-    end process clocker;
-
     stimulus: process
         variable got_data : std_logic_vector(15 downto 0);
         variable expected_data : std_logic_vector(15 downto 0) := std_logic_vector(to_unsigned(42, 16));
@@ -123,7 +117,6 @@ begin
             severity failure;
 
         wait for t_ref * 5;
-        stop <= true;
-        wait;
+        finish;
     end process stimulus;
 end behav;
