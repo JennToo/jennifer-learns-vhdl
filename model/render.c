@@ -1,3 +1,4 @@
+#include <SDL2/SDL_log.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
@@ -50,6 +51,7 @@ struct triangle_rasterizer_t {
   int16_t cursor_x, cursor_y;
   bool forward_traversal;
   bool found_edge;
+  bool new_line;
   bool previous_e;
   int16_t max_y;
   uint16_t color;
@@ -132,9 +134,13 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
   bool current_e =
       (rasterizer->e0 >= 0 && rasterizer->e1 >= 0 && rasterizer->e2 >= 0);
   bool draw_here = false;
+
   if (!rasterizer->found_edge) {
-    // outside - we've found the first edge
-    if (current_e != rasterizer->previous_e) {
+    bool moved_outside =
+        !current_e && rasterizer->previous_e && !rasterizer->new_line;
+    bool moved_inside =
+        current_e && !rasterizer->previous_e && !rasterizer->new_line;
+    if (moved_outside || moved_inside) {
       rasterizer->found_edge = true;
 
       // If we just left the triangle, turn around
@@ -161,7 +167,18 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
     gpu_framebuffer_write(gpu, rasterizer->cursor_x, rasterizer->cursor_y,
                           rasterizer->color);
   }
+  SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "triangle cycle at %d,%d",
+               rasterizer->cursor_x, rasterizer->cursor_y);
+  SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,
+               "draw=%d current_e=%d advance_x=%d advance_y=%d "
+               "found_edge=%d",
+               draw_here, current_e, advance_x, advance_y,
+               rasterizer->found_edge);
+  SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,
+               "e0=%" PRIi32 " e1=%" PRIi32 " e2=%" PRIi32, rasterizer->e0,
+               rasterizer->e1, rasterizer->e2);
   if (advance_x) {
+    rasterizer->new_line = false;
     if (rasterizer->forward_traversal) {
       rasterizer->e0 += rasterizer->deltas.y0;
       rasterizer->e1 += rasterizer->deltas.y1;
@@ -176,6 +193,7 @@ void gpu_triangle_cycle(struct gpu_t *gpu,
   }
   if (advance_y) {
     rasterizer->found_edge = false;
+    rasterizer->new_line = true;
     rasterizer->forward_traversal = !rasterizer->forward_traversal;
     if (rasterizer->cursor_y == rasterizer->max_y) {
       rasterizer->active = false;
@@ -260,6 +278,15 @@ void gpu_draw_triangle(struct gpu_t *gpu, struct screen_triangle_t *triangle,
   rasterizer->previous_e = rasterizer->found_edge;
 
   rasterizer->counters = gpu->counters;
+
+  SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "triangle start at %d,%d",
+               rasterizer->cursor_x, rasterizer->cursor_y);
+  SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,
+               "d0=%" PRIi32 ",%" PRIi32 " d1=%" PRIi32 ",%" PRIi32
+               " d2=%" PRIi32 ",%" PRIi32,
+               rasterizer->deltas.x0, rasterizer->deltas.y0,
+               rasterizer->deltas.x1, rasterizer->deltas.y1,
+               rasterizer->deltas.x2, rasterizer->deltas.y2);
 }
 
 void gpu_report_duration(struct gpu_t *gpu, const char *message,
@@ -267,12 +294,14 @@ void gpu_report_duration(struct gpu_t *gpu, const char *message,
   uint64_t cycles = gpu->counters.cycle - snapshot->cycle;
   double us = (double)(cycles) * 1000000.0 / (double)(SYSTEM_CLOCK_FREQUENCY);
   double percentage = us / 16666.66 * 100;
-  printf("%s took %" PRIu64 " cycles (%f us; %f %% of 60Hz frame)\n", message,
-         cycles, us, percentage);
+  SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+              "%s took %" PRIu64 " cycles (%f us; %f %% of 60Hz frame)\n",
+              message, cycles, us, percentage);
   uint64_t framebuffer_writes =
       gpu->counters.framebuffer_writes - snapshot->framebuffer_writes;
   percentage = (double)(framebuffer_writes) / (double)(cycles) * 100;
-  printf("Framebuffer memory bandwidth utilization: %f%%\n", percentage);
+  SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+              "Framebuffer memory bandwidth utilization: %f%%\n", percentage);
 }
 
 void gpu_save_snapshot(struct gpu_t *gpu) {
@@ -342,6 +371,7 @@ int main(int argc, char **argv) {
     printf("SDL_Init failed: %s", SDL_GetError());
     return 1;
   }
+  SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_DEBUG);
 
   SDL_Window *window = SDL_CreateWindow(
       "render", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH,
