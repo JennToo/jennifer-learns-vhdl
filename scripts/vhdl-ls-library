@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+import tomlkit
+import argparse
+import pathlib
+
+CONFIG_FILE = pathlib.Path("vhdl_ls.toml")
+
+
+def main():
+    args = parse_args()
+    if CONFIG_FILE.exists():
+        config = tomlkit.parse(CONFIG_FILE.read_text())
+    else:
+        config = {}
+
+    libraries = config.get("libraries", {})
+    libraries[args.library] = {
+        "files": [
+            str(pathlib.Path(x).absolute()) for x in args.sources if x.endswith(".vhd")
+        ]
+    }
+    config["libraries"] = libraries
+    CONFIG_FILE.write_text(tomlkit.dumps(config))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("library")
+    parser.add_argument("sources", nargs="+")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    main()

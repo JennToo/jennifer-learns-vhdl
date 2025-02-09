@@ -12,6 +12,7 @@ ghdl-lint-$(1):
 	ghdl -s --std=08 -Wall $(SOURCES)
 
 build/work/$(1)/$(1): $(SOURCES) | build/work/$(1)
+	./scripts/vhdl-ls-library $(1) $(SOURCES)
 	ghdl -s --std=08 --workdir=build/work/$(1) $(SOURCES)
 	ghdl -a --std=08 -Wall --workdir=build/work/$(1) $(SOURCES)
 	ghdl -e --std=08 --workdir=build/work/$(1) -o $$@ $(1)
@@ -34,6 +35,7 @@ build/work/$(1)/pll.v: | build/work/$(1)
 	ecppll $(CLOCKS) --file $$@
 
 build/work/$(1)/$(1).json: $(SOURCES) build/work/$(1)/pll.v | build/work/$(1)
+	./scripts/vhdl-ls-library $(1) $(SOURCES)
 	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --no-formal --std=08 $(SOURCES) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
 
 build/work/$(1)/$(1).config: build/work/$(1)/$(1).json
@@ -50,6 +52,7 @@ define DEFINE_QUARTUS_BITSTREAM
 bitstreams: build/work/$(1)/meta-built
 
 build/work/$(1)/meta-built: $(SOURCES) build/work/$(1)/meta-prepared
+	./scripts/vhdl-ls-library $(1) $(SOURCES)
 	cd build/work/$(1)/ && \
 		set -x && \
 		$(QUARTUS_ROOTDIR)/quartus_map --read_settings_files=on \

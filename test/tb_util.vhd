@@ -1,4 +1,3 @@
-library work;
 use work.math.all;
 
 entity tb_util is
