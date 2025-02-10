@@ -15,8 +15,12 @@ mkdir -p $WORKDIR
 cd "$WORKDIR"
 ghdl -a --std=08 -Wall "${VHDL_SOURCES[@]}"
 ghdl --bind --std=08 tb_gpu
-gcc -c "$C_DRIVER" -o tb_gpu_driver.o
+clang-format -i "$C_DRIVER"
+gcc -O1 -g -std=c17 -I../../3rd-party/stb \
+    -c "$C_DRIVER" -o tb_gpu_driver.o
 
-gcc -g tb_gpu_driver.o \
+gcc -O1 -g -std=c17 \
+    tb_gpu_driver.o \
     -Wl,`ghdl --list-link --std=08 tb_gpu` \
-    -o tb_gpu.sim
+    -o tb_gpu.sim \
+    -lSDL2
