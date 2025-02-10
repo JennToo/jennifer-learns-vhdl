@@ -16,35 +16,72 @@ architecture behave of tb_gpu is
     constant CMD_STEP_MANY : integer := 2;
     constant CMD_FINISH    : integer := 3;
 
-    signal clk : std_logic;
+    signal clk  : std_logic;
+    signal arst : std_logic;
 
-    procedure gpu_framebuffer_write(x: integer; y: integer; color: integer) is
+    signal sram_address      : std_logic_vector(19 downto 0);
+    signal sram_write_data   : std_logic_vector(15 downto 0);
+    signal sram_read_data    : std_logic_vector(15 downto 0);
+    signal sram_write_enable : std_logic;
+
+    procedure sim_sram_write16(word_address : integer; value : integer) is
     begin
-    end procedure gpu_framebuffer_write;
-    attribute foreign of gpu_framebuffer_write : procedure is "VHPIDIRECT gpu_framebuffer_write";
+    end procedure sim_sram_write16;
+    attribute foreign of sim_sram_write16 : procedure is "VHPIDIRECT sim_sram_write16";
 
     function handle_event return integer is
     begin
     end function handle_event;
     attribute foreign of handle_event : function is "VHPIDIRECT handle_event";
 begin
-    clk <= not clk after CLK_PERIOD / 2;
+    U_gpu : entity work.gpu
+    port map (
+        clk  => clk,
+        arst => arst,
 
-    stimulus: process
+        sram_address      => sram_address,
+        sram_write_data   => sram_write_data,
+        sram_read_data    => sram_read_data,
+        sram_write_enable => sram_write_enable
+    );
+
+    writer_p : process (clk) is
+    begin
+        if rising_edge(clk) then
+            if (sram_write_enable = '1') then
+                sim_sram_write16(
+                    to_integer(unsigned(sram_address)),
+                    to_integer(unsigned(sram_write_data))
+                );
+            end if;
+        end if;
+    end process writer_p;
+
+    stimulus_p: process
         variable event : integer := CMD_NONE;
     begin
-        report "Hello linking/bind!" severity note;
-        wait for 10 * CLK_PERIOD;
+        arst <= '0';
+        wait for CLK_PERIOD;
+        arst <= '1';
 
         while (event /= CMD_FINISH) loop
             event := handle_event;
             case (event) is
                 when CMD_STEP_ONE =>
-                    -- TODO: Drive this from the real logic
-                    gpu_framebuffer_write(0, 0, 0);
+                    clk <= '1';
+                    wait for CLK_PERIOD / 2;
+                    clk <= '0';
+                    wait for CLK_PERIOD / 2;
+                when CMD_STEP_MANY =>
+                    for i in 1 to 100 loop
+                        clk <= '1';
+                        wait for CLK_PERIOD / 2;
+                        clk <= '0';
+                        wait for CLK_PERIOD / 2;
+                    end loop;
                 when others =>
             end case;
         end loop;
         finish;
-    end process stimulus;
+    end process stimulus_p;
 end architecture behave;

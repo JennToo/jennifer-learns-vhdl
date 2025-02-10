@@ -1,11 +1,10 @@
-#include <SDL2/SDL_log.h>
-#include <stdlib.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_log.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
@@ -15,8 +14,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
-#include <strings.h>
 
 const int WINDOW_WIDTH = 960;
 const int WINDOW_HEIGHT = 720;
@@ -24,52 +21,46 @@ const int INTERNAL_WIDTH = 320;
 const int INTERNAL_HEIGHT = 240;
 const int FRAMEBUFFER_PIXELS = INTERNAL_WIDTH * INTERNAL_HEIGHT;
 const int FRAMEBUFFER_BYTES = 2 * FRAMEBUFFER_PIXELS;
-const int SYSTEM_CLOCK_FREQUENCY = 100 * 1000 * 1000;
+const int SRAM_BYTES = 2 * 1024 * 1024;
 
-struct perf_counters_t {
-  uint64_t cycle;
-  uint64_t framebuffer_writes;
+#define CMD_NONE 0
+#define CMD_STEP_ONE 1
+#define CMD_STEP_MANY 2
+#define CMD_FINISH 3
+
+struct rams_t {
+  uint16_t *sram;
 };
 
-struct gpu_t {
-  uint16_t *framebuffer;
-  struct perf_counters_t counters;
-};
-
-struct gpu_t *gpu;
+struct rams_t *gpu;
 SDL_Renderer *renderer;
 SDL_Texture *framebuffer_texture;
 
-void gpu_init(void);
-void gpu_save_snapshot(void);
-void gpu_framebuffer_write(int x, int y, int color);
-void handle_events(void);
-
+int ghdl_main(int argc, char **argv);
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 void rgb565_to_rgb888(uint16_t color, uint8_t *out);
-extern int ghdl_main(int argc, char **argv);
 
-void gpu_init(void) {
-  gpu = malloc(sizeof(struct gpu_t));
-  gpu->framebuffer = malloc(FRAMEBUFFER_BYTES);
+void system_init(void) {
+  gpu = malloc(sizeof(struct rams_t));
+
+  gpu->sram = malloc(SRAM_BYTES);
+
+  uint16_t *framebuffer = gpu->sram;
   for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
     for (int x = 0; x < INTERNAL_WIDTH; ++x) {
-      gpu->framebuffer[y * INTERNAL_WIDTH + x] = rgb565(40, 40, 40);
+      framebuffer[y * INTERNAL_WIDTH + x] = rgb565(40, 40, 40);
     }
   }
-
-  gpu->counters.cycle = 0;
 }
 
-void gpu_framebuffer_write(int x, int y, int color) {
-  gpu->framebuffer[y * INTERNAL_WIDTH + x] = color;
-  gpu->counters.framebuffer_writes += 1;
+void sim_sram_write16(int word_address, int value) {
+  gpu->sram[word_address] = (uint16_t)(value);
 
   uint16_t *texture_memory = NULL;
   int _unused;
   SDL_LockTexture(framebuffer_texture, NULL, (void **)&texture_memory,
                   &_unused);
-  memcpy(texture_memory, gpu->framebuffer, FRAMEBUFFER_BYTES);
+  memcpy(texture_memory, gpu->sram, FRAMEBUFFER_BYTES);
   SDL_UnlockTexture(framebuffer_texture);
 
   SDL_RenderClear(renderer);
@@ -87,7 +78,7 @@ void gpu_save_snapshot(void) {
   uint8_t *cursor = data;
   for (int y = 0; y < INTERNAL_HEIGHT; ++y) {
     for (int x = 0; x < INTERNAL_WIDTH; ++x) {
-      uint16_t color = gpu->framebuffer[y * INTERNAL_WIDTH + x];
+      uint16_t color = gpu->sram[y * INTERNAL_WIDTH + x];
       rgb565_to_rgb888(color, cursor);
       cursor += 3;
     }
@@ -110,11 +101,6 @@ void rgb565_to_rgb888(uint16_t color, uint8_t *out) {
   out[1] = g;
   out[2] = b;
 }
-
-#define CMD_NONE 0
-#define CMD_STEP_ONE 1
-#define CMD_STEP_MANY 2
-#define CMD_FINISH 3
 
 int handle_event(void) {
   SDL_Event event;
@@ -178,7 +164,7 @@ int main(int argc, char **argv) {
 
   SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
 
-  gpu_init();
+  system_init();
 
   return ghdl_main(argc, argv);
 }

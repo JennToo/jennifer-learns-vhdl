@@ -4,6 +4,8 @@ set -eux -o pipefail
 
 WORKDIR="build/tb_gpu"
 VHDL_SOURCES=(
+    "$(realpath "src/pkg/math.vhd")"
+    "$(realpath "src/gpu.vhd")"
     "$(realpath "test/tb_gpu.vhd")"
 )
 C_DRIVER=$(realpath test/tb_gpu.c)

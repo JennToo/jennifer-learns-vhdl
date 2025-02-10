@@ -136,12 +136,20 @@ build/render: model/render.c
 	gcc -O1 -g -std=c17 -I./3rd-party/stb -fsanitize=address,undefined -Wall \
 		$< -o $@ -lSDL2
 
-build/tb_gpu/tb_gpu.sim: test/tb_gpu.vhd test/tb_gpu.c scripts/build_tb_gpu
+build/tb_gpu/tb_gpu.sim: \
+	src/gpu.vhd \
+	src/pkg/math.vhd \
+	test/tb_gpu.vhd \
+	test/tb_gpu.c \
+	scripts/build_tb_gpu
 	./scripts/build_tb_gpu
 
 .PHONY: tb_gpu
 tb_gpu: build/tb_gpu/tb_gpu.sim
-	$<
+	$< --wave="build/tb_gpu/waves.ghw" --assert-level=error
+
+waves-tb_gpu:
+	gtkwave build/tb_gpu/waves.ghw
 
 all: build/tb_gpu/tb_gpu.sim
 
