@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -eux -o pipefail
+
+WORKDIR="build/tb_gpu"
+VHDL_SOURCES=(
+    "$(realpath "test/tb_gpu.vhd")"
+)
+C_DRIVER=$(realpath test/tb_gpu.c)
+
+mkdir -p $WORKDIR
+
+./scripts/vhdl-ls-library tb_gpu "${VHDL_SOURCES[@]}"
+
+cd "$WORKDIR"
+ghdl -a --std=08 -Wall "${VHDL_SOURCES[@]}"
+ghdl --bind --std=08 tb_gpu
+gcc -c "$C_DRIVER" -o tb_gpu_driver.o
+
+gcc -g tb_gpu_driver.o \
+    -Wl,`ghdl --list-link --std=08 tb_gpu` \
+    -o tb_gpu.sim

@@ -136,6 +136,15 @@ build/render: model/render.c
 	gcc -O1 -g -std=c17 -I./3rd-party/stb -fsanitize=address,undefined -Wall \
 		$< -o $@ -lSDL2
 
+build/tb_gpu/tb_gpu.sim: test/tb_gpu.vhd test/tb_gpu.c scripts/build_tb_gpu
+	./scripts/build_tb_gpu
+
+.PHONY: tb_gpu
+tb_gpu: build/tb_gpu/tb_gpu.sim
+	$<
+
+all: build/tb_gpu/tb_gpu.sim
+
 .PHONY: render
 render: build/render
 	ASAN_OPTIONS=detect_leaks=0 $<
