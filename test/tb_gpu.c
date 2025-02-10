@@ -55,7 +55,9 @@ void system_init(void) {
 
 void sim_sram_write16(int word_address, int value) {
   gpu->sram[word_address] = (uint16_t)(value);
+}
 
+void redraw_framebuffer(void) {
   uint16_t *texture_memory = NULL;
   int _unused;
   SDL_LockTexture(framebuffer_texture, NULL, (void **)&texture_memory,
@@ -105,6 +107,7 @@ void rgb565_to_rgb888(uint16_t color, uint8_t *out) {
 int handle_event(void) {
   SDL_Event event;
   if (SDL_PollEvent(&event) == 0) {
+    SDL_Delay(16);
     return CMD_NONE;
   }
   if (event.type == SDL_QUIT) {

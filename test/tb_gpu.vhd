@@ -33,6 +33,11 @@ architecture behave of tb_gpu is
     begin
     end function handle_event;
     attribute foreign of handle_event : function is "VHPIDIRECT handle_event";
+
+    procedure redraw_framebuffer is
+    begin
+    end procedure redraw_framebuffer;
+    attribute foreign of redraw_framebuffer : procedure is "VHPIDIRECT redraw_framebuffer";
 begin
     U_gpu : entity work.gpu
     port map (
@@ -72,13 +77,15 @@ begin
                     wait for CLK_PERIOD / 2;
                     clk <= '0';
                     wait for CLK_PERIOD / 2;
+                    redraw_framebuffer;
                 when CMD_STEP_MANY =>
-                    for i in 1 to 100 loop
+                    for i in 1 to 1000 loop
                         clk <= '1';
                         wait for CLK_PERIOD / 2;
                         clk <= '0';
                         wait for CLK_PERIOD / 2;
                     end loop;
+                    redraw_framebuffer;
                 when others =>
             end case;
         end loop;
