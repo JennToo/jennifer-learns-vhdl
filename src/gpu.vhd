@@ -25,32 +25,26 @@ architecture rtl of gpu is
     signal sram_write_data_i   : std_logic_vector(15 downto 0);
     signal sram_write_enable_i : std_logic;
 
-    -- Screen clear-er
-    constant framebuffer_words : integer := framebuffer_width * framebuffer_height;
-    constant cursor_width      : integer := clog2(framebuffer_words);
-    constant clear_color       : std_logic_vector(15 downto 0) := 16x"CF0B";
-
-    signal cursor : unsigned(cursor_width-1 downto 0);
+    signal clear_enable : std_logic;
 begin
     sram_address      <= sram_address_i;
     sram_write_enable <= sram_write_enable_i;
     sram_write_data   <= sram_write_data_i;
 
-    clear_p : process (clk, arst) is
-    begin
-        if (arst = '0') then
-            cursor              <= to_unsigned(0, cursor_width);
-            sram_write_enable_i <= '0';
-        elsif rising_edge(clk) then
-            if (cursor < to_unsigned(framebuffer_words, cursor_width)) then
-                sram_write_data_i   <= clear_color;
-                sram_write_enable_i <= '1';
-                sram_address_i      <= std_logic_vector(resize(cursor, sram_address_i'length));
-                cursor              <= cursor + 1;
-            else
-                sram_write_enable_i <= '0';
-                sram_write_data_i   <= (others => 'U');
-            end if;
-        end if;
-    end process clear_p;
+    clear_enable <= '1';
+
+    U_clear : entity work.clear
+    generic map (
+        framebuffer_width  => framebuffer_width,
+        framebuffer_height => framebuffer_height
+    )
+    port map (
+        clk               => clk,
+        clk_en            => clear_enable,
+        arst              => arst,
+        sram_address      => sram_address_i,
+        sram_write_data   => sram_write_data_i,
+        sram_write_enable => sram_write_enable_i
+    );
+        
 end rtl;

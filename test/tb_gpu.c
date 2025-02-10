@@ -23,10 +23,10 @@ const int FRAMEBUFFER_PIXELS = INTERNAL_WIDTH * INTERNAL_HEIGHT;
 const int FRAMEBUFFER_BYTES = 2 * FRAMEBUFFER_PIXELS;
 const int SRAM_BYTES = 2 * 1024 * 1024;
 
-#define CMD_NONE 0
-#define CMD_STEP_ONE 1
-#define CMD_STEP_MANY 2
-#define CMD_FINISH 3
+const int CMD_NONE = 0;
+const int CMD_STEP_ONE = 1;
+const int CMD_STEP_MANY = 2;
+const int CMD_FINISH = 3;
 
 struct rams_t {
   uint16_t *sram;

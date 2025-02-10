@@ -5,6 +5,7 @@ set -eux -o pipefail
 WORKDIR="build/tb_gpu"
 VHDL_SOURCES=(
     "$(realpath "src/pkg/math.vhd")"
+    "$(realpath "src/gpu/clear.vhd")"
     "$(realpath "src/gpu.vhd")"
     "$(realpath "test/tb_gpu.vhd")"
 )

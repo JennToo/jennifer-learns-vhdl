@@ -138,6 +138,7 @@ build/render: model/render.c
 
 build/tb_gpu/tb_gpu.sim: \
 	src/gpu.vhd \
+	src/gpu/clear.vhd \
 	src/pkg/math.vhd \
 	test/tb_gpu.vhd \
 	test/tb_gpu.c \
