@@ -10,7 +10,7 @@ end tb_lfsr;
 architecture behave of tb_lfsr is
     constant CLK_PERIOD : time := 10 ns;
 
-    signal clk         : std_logic;
+    signal clk         : std_logic := '0'; 
     signal arst        : std_logic;
     signal value       : std_logic_vector(15 downto 0);
     signal clk_counter : integer := 0;
@@ -26,6 +26,13 @@ begin
         arst  => arst,
         value => value
     );
+
+    counter: process(clk)
+    begin
+        if rising_edge(clk) then
+            clk_counter <= clk_counter + 1;
+        end if;
+    end process counter;
 
     stimulus: process
         variable clk_snapshot : integer;
@@ -46,10 +53,11 @@ begin
             severity error;
 
         wait until value = x"ACE1" for 100 ms;
+        wait until falling_edge(clk);
         assert value = x"ACE1"
             report "unexpected value " & to_string(value)
             severity error;
-        assert clk_counter - clk_snapshot = 65534
+        assert clk_counter - clk_snapshot = 65535
             report "repeated at unexpected period " & integer'image(clk_counter - clk_snapshot)
             severity error;
 

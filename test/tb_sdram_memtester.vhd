@@ -19,7 +19,7 @@ architecture behav of tb_sdram_memtester is
     signal axi_initiator : axi4l_initiator_signals_t;
     signal axi_target    : axi4l_target_signals_t;
 
-    signal clk   : std_logic;
+    signal clk   : std_logic := '0';
     signal cke   : std_logic;
     signal csn   : std_logic;
     signal casn  : std_logic;

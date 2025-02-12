@@ -16,7 +16,7 @@ architecture behave of tb_gpu is
     constant CMD_STEP_MANY : integer := 2;
     constant CMD_FINISH    : integer := 3;
 
-    signal clk  : std_logic;
+    signal clk  : std_logic := '0';
     signal arst : std_logic;
 
     signal sram_address      : std_logic_vector(19 downto 0);

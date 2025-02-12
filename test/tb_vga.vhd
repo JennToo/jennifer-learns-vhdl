@@ -18,7 +18,7 @@ architecture behave of tb_vga is
     constant hsync_pulse : time  := 3.8133068520357 us;
     constant vsync_pulse : time  := 0.063555114200596 ms;
 
-    signal clk  : std_logic;
+    signal clk  : std_logic := '0';
     signal arst : std_logic;
 
     signal pixel_i : wide_pixel_t;

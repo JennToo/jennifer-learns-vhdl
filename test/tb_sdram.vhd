@@ -23,19 +23,19 @@ architecture behav of tb_sdram is
     signal axi_initiator : axi4l_initiator_signals_t;
     signal axi_target    : axi4l_target_signals_t;
 
-    signal clk  : std_logic;
-    signal cke  : std_logic;
-    signal csn  : std_logic;
-    signal casn : std_logic;
-    signal rasn : std_logic;
-    signal wen  : std_logic;
-    signal dqm  : std_logic_vector(1 downto 0);
-    signal ba   : std_logic_vector(1  downto 0);
-    signal a    : std_logic_vector(12 downto 0);
-    signal dq_i   : std_logic_vector(15 downto 0);
-    signal dq_o   : std_logic_vector(15 downto 0);
+    signal clk   : std_logic := '0';
+    signal cke   : std_logic;
+    signal csn   : std_logic;
+    signal casn  : std_logic;
+    signal rasn  : std_logic;
+    signal wen   : std_logic;
+    signal dqm   : std_logic_vector(1 downto 0);
+    signal ba    : std_logic_vector(1  downto 0);
+    signal a     : std_logic_vector(12 downto 0);
+    signal dq_i  : std_logic_vector(15 downto 0);
+    signal dq_o  : std_logic_vector(15 downto 0);
     signal dq_oe : std_logic;
-    signal arst : std_logic;
+    signal arst  : std_logic;
 begin
     clk <= not clk after CLK_PERIOD / 2;
 

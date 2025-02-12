@@ -12,7 +12,7 @@ architecture behav of tb_spi_rx is
     constant CLK_PERIOD     : time := 2 ns;
     constant SPI_CLK_PERIOD : time := 10 ns;
 
-    signal clk        : std_logic;
+    signal clk        : std_logic := '0';
     signal srst       : std_logic;
     signal enable     : std_logic;
     signal spi_clk    : std_logic;
