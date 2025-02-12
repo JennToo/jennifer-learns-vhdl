@@ -24,29 +24,6 @@ build/$(1):
 	mkdir -p $$@
 endef
 
-define DEFINE_ECP5_BITSTREAM
-bitstreams: build/work/$(1)/$(1).bit
-
-program-$(1): build/work/$(1)/$(1).bit
-	./scripts/ulx3s-ftp-upload $(ULX3S_ESP32_HOST) build/work/$(1)/$(1).bit
-
-build/work/$(1)/pll.v: | build/work/$(1)
-	ecppll $(CLOCKS) --file $$@
-
-build/work/$(1)/$(1).json: $(SOURCES) build/work/$(1)/pll.v | build/work/$(1)
-	./scripts/vhdl-ls-library $(1) $(SOURCES)
-	yosys -m ghdl -p "read_verilog build/work/$(1)/pll.v ; ghdl --no-formal --std=08 $(SOURCES) -e toplevel ; synth_ecp5 -json $$@ -top toplevel"
-
-build/work/$(1)/$(1).config: build/work/$(1)/$(1).json
-	nextpnr-ecp5 --json $$< --textcfg $$@ --lpf synth/ulx3s/ulx3s_v20.lpf --85k --package CABGA381
-
-build/work/$(1)/$(1).bit: build/work/$(1)/$(1).config
-	ecppack $$< $$@
-
-build/work/$(1):
-	mkdir -p $$@
-endef
-
 define DEFINE_QUARTUS_BITSTREAM
 bitstreams: build/work/$(1)/meta-built
 
@@ -107,10 +84,6 @@ SOURCES := \
 	test/sim_fifo.vhd \
 	test/tb_vga.vhd
 $(eval $(call DEFINE_SIMULATION,tb_vga))
-
-SOURCES := src/pkg/axi.vhd src/pkg/sdram.vhd src/pkg/math.vhd src/basic_sdram.vhd src/memtester.vhd src/lfsr_16.vhd synth/ulx3s/sdram_test/toplevel.vhd
-CLOCKS  := --clkin 25 --clkout0 100
-$(eval $(call DEFINE_ECP5_BITSTREAM,ulx3s_sdram_test))
 
 PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
