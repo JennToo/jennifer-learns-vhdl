@@ -3,25 +3,24 @@
 all: bitstreams simulations
 
 define DEFINE_SIMULATION
-simulations: build/work/$(1)/meta-sim-run
+simulations: build/$(1)/meta-sim-run
 waves-$(1):
-	gtkwave build/work/$(1)/waves.ghw
-ghdl-lint: ghdl-lint-$(1)
+	gtkwave build/$(1)/waves.fst build/$(1)/waves.gtkw
 
-ghdl-lint-$(1):
-	ghdl -s --std=08 -Wall $(SOURCES)
-
-build/work/$(1)/$(1): $(SOURCES) | build/work/$(1)
+build/$(1)/meta-built: $(SOURCES) | build/$(1)
 	./scripts/vhdl-ls-library $(1) $(SOURCES)
-	ghdl -s --std=08 --workdir=build/work/$(1) $(SOURCES)
-	ghdl -a --std=08 -Wall --workdir=build/work/$(1) $(SOURCES)
-	ghdl -e --std=08 --workdir=build/work/$(1) -o $$@ $(1)
-
-build/work/$(1)/meta-sim-run: build/work/$(1)/$(1)
-	build/work/$(1)/$(1) --wave="build/work/$(1)/waves.ghw" --assert-level=error
+	nvc --work=work:build/$(1)/work --std=2008 -a $(SOURCES)
+	nvc --work=work:build/$(1)/work --std=2008 -e $(1)
 	touch $$@
 
-build/work/$(1):
+build/$(1)/meta-sim-run: build/$(1)/meta-built
+	nvc --work=work:build/$(1)/work --std=2008 -r \
+		--wave="build/$(1)/waves.fst" \
+		--gtkw="build/$(1)/waves.gtkw" \
+		$(1)
+	touch $$@
+
+build/$(1):
 	mkdir -p $$@
 endef
 
