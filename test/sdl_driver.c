@@ -171,7 +171,4 @@ void startup(void) {
   system_init();
 }
 
-void (*vhpi_startup_routines[])() = {
-    startup,
-    NULL
-};
+void (*vhpi_startup_routines[])() = {startup, NULL};

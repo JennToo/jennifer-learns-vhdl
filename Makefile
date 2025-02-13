@@ -43,7 +43,8 @@ build/work/$(1)/meta-built: $(SOURCES) build/work/$(1)/meta-prepared
 	touch $$@
 
 build/work/$(1)/meta-prepared: $(QSF_FILE) $(QPF_FILE) | build/work/$(1)
-	cp $(QSF_FILE) $(QPF_FILE) build/work/$(1)/
+	cp $(QSF_FILE) build/work/$(1)/
+	./scripts/write_qsf $(QSF_FILE) build/work/$(1)/$(PROJECT).qsf $(SOURCES)
 	cd build/work/$(1)/ && \
 		$(QUARTUS_ROOTDIR)/quartus_sh --prepare $(PROJECT)
 	touch $$@
@@ -91,7 +92,11 @@ PROJECT  := DE2_115_Computer
 QSF_FILE := synth/DE2-115/Computer/$(PROJECT).qsf
 QPF_FILE := synth/DE2-115/Computer/$(PROJECT).qpf
 SOURCES  := \
-	src/vga.vhd src/pkg/math.vhd src/pkg/graphics.vhd \
+	src/vga.vhd \
+	src/pkg/math.vhd \
+	src/pkg/graphics.vhd \
+	src/gpu/clear.vhd \
+	src/gpu.vhd \
 	synth/DE2-115/Computer/DE2_115_Computer.vhd \
 	synth/DE2-115/Computer/clock_gen.ppf \
 	synth/DE2-115/Computer/clock_gen.qip \
@@ -119,7 +124,7 @@ build/tb_gpu/sdl_driver.so: test/sdl_driver.c | build/tb_gpu
 	gcc -I./3rd-party/stb -O1 -g -std=c17 -shared \
 		-Wall -fPIC $< -o $@ -lSDL2
 
-build/work/tb_gpu/meta-built: build/tb_gpu/sdl_driver.so
+build/tb_gpu/meta-built: build/tb_gpu/sdl_driver.so
 
 build/render: model/render.c
 	clang-format -i $<
