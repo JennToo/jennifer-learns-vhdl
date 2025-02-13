@@ -96,6 +96,7 @@ SOURCES  := \
 	src/pkg/math.vhd \
 	src/pkg/graphics.vhd \
 	src/gpu/clear.vhd \
+	src/gpu/rasterizer.vhd \
 	src/gpu.vhd \
 	synth/DE2-115/Computer/DE2_115_Computer.vhd \
 	synth/DE2-115/Computer/clock_gen.ppf \
@@ -113,6 +114,7 @@ $(eval $(call DEFINE_SIMULATION,tb_uart_rx))
 SOURCES := \
 	src/pkg/math.vhd \
 	src/gpu/clear.vhd \
+	src/gpu/rasterizer.vhd \
 	src/gpu.vhd \
 	test/tb_gpu.vhd
 SIM_RUNTIME_ARGS := --load build/tb_gpu/sdl_driver.so

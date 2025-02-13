@@ -20,4 +20,6 @@ package graphics is
         blue  => (others => '1')
     );
 
+    type cursor_direction_t is (inc_x, dec_x, inc_y);
+
 end package graphics;
