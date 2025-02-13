@@ -10,6 +10,8 @@
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 
+#include <vhpi_user.h>
+
 #include <memory.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -36,7 +38,6 @@ struct rams_t *gpu;
 SDL_Renderer *renderer;
 SDL_Texture *framebuffer_texture;
 
-int ghdl_main(int argc, char **argv);
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 void rgb565_to_rgb888(uint16_t color, uint8_t *out);
 
@@ -53,7 +54,7 @@ void system_init(void) {
   }
 }
 
-void sim_sram_write16(int word_address, int value) {
+void sim_sram_write16(int32_t word_address, int32_t value) {
   gpu->sram[word_address] = (uint16_t)(value);
 }
 
@@ -104,7 +105,7 @@ void rgb565_to_rgb888(uint16_t color, uint8_t *out) {
   out[2] = b;
 }
 
-int handle_event(void) {
+int32_t handle_event(void) {
   SDL_Event event;
   if (SDL_PollEvent(&event) == 0) {
     SDL_Delay(16);
@@ -131,10 +132,10 @@ int handle_event(void) {
   return CMD_NONE;
 }
 
-int main(int argc, char **argv) {
+void startup(void) {
   if (SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0) {
     printf("SDL_Init failed: %s", SDL_GetError());
-    return 1;
+    exit(1);
   }
   SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_DEBUG);
 
@@ -143,31 +144,34 @@ int main(int argc, char **argv) {
       WINDOW_HEIGHT, SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_MAXIMIZED);
   if (window == NULL) {
     printf("SDL_CreateWindow failed: %s", SDL_GetError());
-    return 1;
+    exit(1);
   }
 
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
   if (renderer == NULL) {
     printf("SDL_CreateRenderer failed: %s", SDL_GetError());
-    return 1;
+    exit(1);
   }
 
   if (SDL_RenderSetLogicalSize(renderer, INTERNAL_WIDTH, INTERNAL_HEIGHT) !=
       0) {
     printf("SDL_RenderSetLogicalSize failed %s", SDL_GetError());
-    return 1;
+    exit(1);
   }
   framebuffer_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB565,
                                           SDL_TEXTUREACCESS_STREAMING,
                                           INTERNAL_WIDTH, INTERNAL_HEIGHT);
   if (framebuffer_texture == NULL) {
     printf("SDL_CreateTexture failed: %s", SDL_GetError());
-    return 1;
+    exit(1);
   }
 
   SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
 
   system_init();
-
-  return ghdl_main(argc, argv);
 }
+
+void (*vhpi_startup_routines[])() = {
+    startup,
+    NULL
+};

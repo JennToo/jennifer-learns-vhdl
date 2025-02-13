@@ -13,15 +13,17 @@ build/$(1)/meta-built: $(SOURCES) | build/$(1)
 	nvc --work=work:build/$(1)/work --std=2008 -e $(1)
 	touch $$@
 
-build/$(1)/meta-sim-run: build/$(1)/meta-built
+.PHONY: $(1)
+$(1) build/$(1)/meta-sim-run: build/$(1)/meta-built
 	nvc --work=work:build/$(1)/work --std=2008 -r \
 		--wave="build/$(1)/waves.fst" \
 		--gtkw="build/$(1)/waves.gtkw" \
-		$(1)
-	touch $$@
+		$(SIM_RUNTIME_ARGS) $(1)
+	[ "$$@" = "$(1)" ] || touch $$@
 
 build/$(1):
 	mkdir -p $$@
+
 endef
 
 define DEFINE_QUARTUS_BITSTREAM
@@ -103,28 +105,26 @@ SOURCES := \
 	test/tb_uart_rx.vhd
 $(eval $(call DEFINE_SIMULATION,tb_uart_rx))
 
+SOURCES := \
+	src/pkg/math.vhd \
+	src/gpu/clear.vhd \
+	src/gpu.vhd \
+	test/tb_gpu.vhd
+SIM_RUNTIME_ARGS := --load build/tb_gpu/sdl_driver.so
+$(eval $(call DEFINE_SIMULATION,tb_gpu))
+SIM_RUNTIME_ARGS :=
+
+build/tb_gpu/sdl_driver.so: test/sdl_driver.c | build/tb_gpu
+	clang-format -i $<
+	gcc -I./3rd-party/stb -O1 -g -std=c17 -shared \
+		-Wall -fPIC $< -o $@ -lSDL2
+
+build/work/tb_gpu/meta-built: build/tb_gpu/sdl_driver.so
+
 build/render: model/render.c
 	clang-format -i $<
 	gcc -O1 -g -std=c17 -I./3rd-party/stb -fsanitize=address,undefined -Wall \
 		$< -o $@ -lSDL2
-
-build/tb_gpu/tb_gpu.sim: \
-	src/gpu.vhd \
-	src/gpu/clear.vhd \
-	src/pkg/math.vhd \
-	test/tb_gpu.vhd \
-	test/tb_gpu.c \
-	scripts/build_tb_gpu
-	./scripts/build_tb_gpu
-
-.PHONY: tb_gpu
-tb_gpu: build/tb_gpu/tb_gpu.sim
-	$< --wave="build/tb_gpu/waves.ghw" --assert-level=error
-
-waves-tb_gpu:
-	gtkwave build/tb_gpu/waves.ghw
-
-all: build/tb_gpu/tb_gpu.sim
 
 .PHONY: render
 render: build/render

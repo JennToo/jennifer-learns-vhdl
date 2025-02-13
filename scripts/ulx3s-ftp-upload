@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -eux
-ftp -pn "${1}" <<EOF
-put ${2} fpga
-EOF
