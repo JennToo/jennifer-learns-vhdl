@@ -117,7 +117,7 @@ SOURCES := \
 	src/gpu/rasterizer.vhd \
 	src/gpu.vhd \
 	test/tb_gpu.vhd
-SIM_RUNTIME_ARGS := --load build/tb_gpu/sdl_driver.so
+SIM_RUNTIME_ARGS := --load=build/tb_gpu/sdl_driver.so
 $(eval $(call DEFINE_SIMULATION,tb_gpu))
 SIM_RUNTIME_ARGS :=
 

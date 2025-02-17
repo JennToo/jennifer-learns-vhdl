@@ -41,7 +41,7 @@ SDL_Texture *framebuffer_texture;
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b);
 void rgb565_to_rgb888(uint16_t color, uint8_t *out);
 
-void system_init(void) {
+void gpu_init(void) {
   gpu = malloc(sizeof(struct rams_t));
 
   gpu->sram = malloc(SRAM_BYTES);
@@ -168,7 +168,7 @@ void startup(void) {
 
   SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
 
-  system_init();
+  gpu_init();
 }
 
 void (*vhpi_startup_routines[])() = {startup, NULL};
