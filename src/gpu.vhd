@@ -5,10 +5,6 @@ use ieee.numeric_std.all;
 use work.math.all;
 
 entity gpu is
-    generic (
-        framebuffer_width  : integer := 320;
-        framebuffer_height : integer := 240
-    );
     port (
         clk  : in std_logic;
         arst : in std_logic;
@@ -34,10 +30,6 @@ begin
     clear_enable <= '1';
 
     U_clear : entity work.clear
-    generic map (
-        framebuffer_width  => framebuffer_width,
-        framebuffer_height => framebuffer_height
-    )
     port map (
         clk               => clk,
         clk_en            => clear_enable,

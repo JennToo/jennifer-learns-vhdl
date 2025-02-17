@@ -3,26 +3,23 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.math.all;
+use work.gpu_pkg.all;
 
 entity rasterizer is
-    generic (
-        framebuffer_width  : integer := 320;
-        framebuffer_height : integer := 240
-    );
     port (
         clk    : in std_logic;
         clk_en : in std_logic;
         arst   : in std_logic;
 
-        pixel_x       : out std_logic_vector(8 downto 0);
-        pixel_y       : out std_logic_vector(8 downto 0);
+        pixel_x       : out coord_x_t;
+        pixel_y       : out coord_y_t;
         pixel_visible : out std_logic
     );
 end rasterizer;
 
 architecture rtl of rasterizer is
-    signal cursor_x : std_logic_vector(8 downto 0);
-    signal cursor_y : std_logic_vector(8 downto 0);
+    signal cursor_x : coord_x_t;
+    signal cursor_y : coord_y_t;
 begin
     pixel_x <= cursor_x;
     pixel_y <= cursor_y;

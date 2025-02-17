@@ -95,6 +95,7 @@ SOURCES  := \
 	src/vga.vhd \
 	src/pkg/math.vhd \
 	src/pkg/graphics.vhd \
+	src/gpu/gpu_pkg.vhd \
 	src/gpu/clear.vhd \
 	src/gpu/rasterizer.vhd \
 	src/gpu.vhd \
@@ -113,6 +114,7 @@ $(eval $(call DEFINE_SIMULATION,tb_uart_rx))
 
 SOURCES := \
 	src/pkg/math.vhd \
+	src/gpu/gpu_pkg.vhd \
 	src/gpu/clear.vhd \
 	src/gpu/rasterizer.vhd \
 	src/gpu.vhd \

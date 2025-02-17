@@ -3,12 +3,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.math.all;
+use work.gpu_pkg.all;
 
 entity clear is
-    generic (
-        framebuffer_width  : integer := 320;
-        framebuffer_height : integer := 240
-    );
     port (
         clk    : in std_logic;
         clk_en : in std_logic;
@@ -21,8 +18,8 @@ entity clear is
 end clear;
 
 architecture rtl of clear is
-    constant framebuffer_words : integer := framebuffer_width * framebuffer_height;
-    constant cursor_width      : integer := clog2(framebuffer_words);
+    constant framebuffer_words : natural := FB_WIDTH * FB_HEIGHT;
+    constant cursor_width      : natural := clog2(framebuffer_words);
     constant clear_color       : std_logic_vector(15 downto 0) := 16x"CF0B";
 
     signal sram_address_i      : std_logic_vector(19 downto 0);
