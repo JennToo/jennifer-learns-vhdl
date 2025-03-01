@@ -14,4 +14,15 @@ package gpu_pkg is
 
     subtype coord_x_t is unsigned(FB_WIDTH_LOG2  - 1 downto 0);
     subtype coord_y_t is unsigned(FB_HEIGHT_LOG2 - 1 downto 0);
+
+    type rasterizer_params_t is record
+        e0, e1, e2 : signed(31 downto 0); -- TODO: We don't need this many bits
+
+        x0, y0, x1, y1, x2, y2 : signed(15 downto 0);
+        dx0, dy0, dx1, dy1, dx2, dy2 : signed(15 downto 0);
+
+        cursor_x : coord_x_t;
+        cursor_y : coord_y_t;
+        max_y    : coord_y_t;
+    end record rasterizer_params_t;
 end package gpu_pkg;
